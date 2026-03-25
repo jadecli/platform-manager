@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/alexzh/jadecli-ecosystem/scripts/session-init.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/alexzh/jadecli-ecosystem/scripts/access-guard.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

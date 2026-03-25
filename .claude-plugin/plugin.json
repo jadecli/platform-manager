@@ -1,0 +1,7 @@
+{
+  "name": "platform-manager",
+  "description": "LSP servers, platform management skills, and ecosystem hooks for jadecli. Provides code intelligence for TypeScript, Python, Rust, Go, Lua, Bash, TOML, and YAML. Includes surface-init and dotfile-audit skills for multi-surface ecosystem management.",
+  "version": "0.1.0",
+  "author": "jadecli",
+  "repository": "https://github.com/jadecli/platform-manager"
+}
