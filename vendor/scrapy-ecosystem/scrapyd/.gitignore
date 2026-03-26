@@ -1,0 +1,19 @@
+# Build
+*.egg-info
+
+# Docs
+/docs/_build
+
+# Tests
+/.coverage
+/htmlcov
+/tests/fixtures/*.egg
+/tests/projects/dist
+
+# CLI
+/scrapyd.conf
+/twistd.pid
+/dbs
+/eggs
+/items
+/logs
