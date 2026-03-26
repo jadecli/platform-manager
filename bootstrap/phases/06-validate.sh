@@ -63,6 +63,19 @@ check "yaml-language-server" \
   "$(jq -r '.lsp."yaml-language-server"' "$VERSIONS")" \
   "$(npm list -g yaml-language-server 2>/dev/null | grep 'yaml-language-server@' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo none)"
 
+# managed-settings.d (respects CLAUDE_CONFIG_DIR)
+MANAGED_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/managed-settings.d"
+if [[ -d "$MANAGED_DIR" && -f "$MANAGED_DIR/00-jadecli-security.json" ]]; then
+  printf "  %-30s ${GRN:-}PASS${RST:-} %s\n" "managed-settings.d" "$MANAGED_DIR"
+  ((PASS++))
+elif [[ -d "$MANAGED_DIR" ]]; then
+  printf "  %-30s ${YLW:-}SKIP${RST:-} (dir exists, no policy)\n" "managed-settings.d"
+  ((SKIP++))
+else
+  printf "  %-30s ${YLW:-}SKIP${RST:-} (not deployed)\n" "managed-settings.d"
+  ((SKIP++))
+fi
+
 echo ""
 echo "  Results: ${PASS} pass, ${FAIL} fail, ${SKIP} skip"
 
