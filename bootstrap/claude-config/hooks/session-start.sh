@@ -33,3 +33,15 @@ if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
   fi
   echo "export SESSION_START_UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$CLAUDE_ENV_FILE"
 fi
+
+# Drift check: once per day, compare ~/.claude/ against repo source of truth
+DRIFT_STAMP="${HOME}/.claude/.drift-check-last"
+DRIFT_SCRIPT="${HOME}/platform-manager/bootstrap/scripts/drift-check.sh"
+if [[ -f "$DRIFT_SCRIPT" ]]; then
+  TODAY=$(date +%Y-%m-%d)
+  LAST=$(cat "$DRIFT_STAMP" 2>/dev/null || echo "")
+  if [[ "$LAST" != "$TODAY" ]]; then
+    echo "$TODAY" > "$DRIFT_STAMP"
+    bash "$DRIFT_SCRIPT" 2>/dev/null | grep -E '^(DIFF|MISS|LINK)' || true
+  fi
+fi

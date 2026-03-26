@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Create a secondary Claude config dir that shares config with ~/.claude/.
-# Only auth credentials and session history stay separate.
+# Create a secondary Claude config dir with copies of shared config.
+# Auth credentials and session history stay separate per identity.
 #
 # Why: CLAUDE_CONFIG_DIR replaces the ENTIRE ~/.claude/ path.
-# Without shared symlinks, the secondary identity has no hooks, settings,
-# commands, rules, plugins, or statusline.
+# Without shared config, the secondary identity has no hooks, settings,
+# commands, rules, or statusline.
 #
 # Usage: bash multi-identity-setup.sh [config-name]
 # Example: bash multi-identity-setup.sh .claude-jade
@@ -14,14 +14,15 @@ CONFIG_NAME="${1:-.claude-jade}"
 PRIMARY="$HOME/.claude"
 SECONDARY="$HOME/$CONFIG_NAME"
 
-[[ -d "$PRIMARY" ]] || { echo "error: $PRIMARY not found" >&2; exit 1; }
+[[ -d "$PRIMARY" ]] || { echo "error: $PRIMARY not found. Run phase 07 first." >&2; exit 1; }
 
-# Nuke and rebuild — avoids stale files from previous runs
+# Preserve auth + session state before rebuild
+PRESERVE_TMP="/tmp/claude-identity-$$"
+mkdir -p "$PRESERVE_TMP"
 if [[ -d "$SECONDARY" ]]; then
-  # Preserve auth credentials and session history
-  for keep in sessions credentials.json .credentials.json; do
+  for keep in sessions credentials.json .credentials.json .claude.json; do
     [[ -e "$SECONDARY/$keep" && ! -L "$SECONDARY/$keep" ]] && \
-      /bin/mv "$SECONDARY/$keep" "/tmp/claude-keep-${keep//\//-}-$$" 2>/dev/null || true
+      /bin/cp -R "$SECONDARY/$keep" "$PRESERVE_TMP/" 2>/dev/null || true
   done
   /bin/rm -rf "$SECONDARY"
 fi
@@ -29,19 +30,22 @@ fi
 mkdir -p "$SECONDARY"
 
 # Restore preserved items
-for keep in sessions credentials.json .credentials.json; do
-  src="/tmp/claude-keep-${keep//\//-}-$$"
-  [[ -e "$src" ]] && /bin/mv "$src" "$SECONDARY/$keep" 2>/dev/null || true
+for keep in sessions credentials.json .credentials.json .claude.json; do
+  [[ -e "$PRESERVE_TMP/$keep" ]] && /bin/cp -R "$PRESERVE_TMP/$keep" "$SECONDARY/" 2>/dev/null || true
+done
+/bin/rm -rf "$PRESERVE_TMP"
+
+# Copy shared config (not symlinks — fully independent)
+SHARED_FILES=(CLAUDE.md settings.json settings.local.json keybindings.json statusline-command.sh shell-helpers.sh)
+SHARED_DIRS=(agents commands hooks output-styles rules skills)
+
+COPIED=0
+for f in "${SHARED_FILES[@]}"; do
+  [[ -f "$PRIMARY/$f" ]] && { /bin/cp "$PRIMARY/$f" "$SECONDARY/$f"; ((COPIED++)); }
+done
+for d in "${SHARED_DIRS[@]}"; do
+  [[ -d "$PRIMARY/$d" ]] && { /bin/cp -R "$PRIMARY/$d" "$SECONDARY/$d"; ((COPIED++)); }
 done
 
-# Symlink shared config
-SHARED=(agents CLAUDE.md commands hooks keybindings.json output-styles
-  plugins projects rules settings.json settings.local.json
-  shell-helpers.sh skills statusline-command.sh tasks teams)
-
-for item in "${SHARED[@]}"; do
-  [[ -e "$PRIMARY/$item" ]] && ln -s "$PRIMARY/$item" "$SECONDARY/$item"
-done
-
-echo "Created $SECONDARY (${#SHARED[@]} symlinks → $PRIMARY)"
+echo "Created $SECONDARY ($COPIED items copied from $PRIMARY)"
 echo "Next: CLAUDE_CONFIG_DIR=$SECONDARY claude auth login"
