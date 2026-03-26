@@ -3,8 +3,6 @@
 # Requires: PLATFORM, VERSIONS, DRY_RUN, REPO_ROOT
 set -euo pipefail
 
-source "$(dirname "$0")/../install.sh" 2>/dev/null || true
-
 NODE_VER=$(jq -r '.runtime.node' "$VERSIONS")
 PYTHON_VER=$(jq -r '.runtime.python' "$VERSIONS")
 RUST_VER=$(jq -r '.runtime.rustc' "$VERSIONS")
