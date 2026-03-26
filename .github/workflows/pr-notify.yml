@@ -20,28 +20,46 @@ jobs:
     steps:
       - name: Determine event type
         id: event
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEW_AUTHOR: ${{ github.event.review.user.login }}
+          CHECK_BRANCH: ${{ github.event.check_suite.head_branch }}
+          CHECK_URL: ${{ github.event.check_suite.url }}
+          CHECK_CONCLUSION: ${{ github.event.check_suite.conclusion }}
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
             echo "type=pr_created" >> "$GITHUB_OUTPUT"
-            echo "title=${{ github.event.pull_request.title }}" >> "$GITHUB_OUTPUT"
-            echo "url=${{ github.event.pull_request.html_url }}" >> "$GITHUB_OUTPUT"
-            echo "author=${{ github.event.pull_request.user.login }}" >> "$GITHUB_OUTPUT"
-            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event_name }}" == "pull_request_review" ]]; then
-            echo "type=review_${{ github.event.review.state }}" >> "$GITHUB_OUTPUT"
-            echo "title=${{ github.event.pull_request.title }}" >> "$GITHUB_OUTPUT"
-            echo "url=${{ github.event.pull_request.html_url }}" >> "$GITHUB_OUTPUT"
-            echo "author=${{ github.event.review.user.login }}" >> "$GITHUB_OUTPUT"
-            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event_name }}" == "check_suite" ]]; then
-            echo "type=checks_${{ github.event.check_suite.conclusion }}" >> "$GITHUB_OUTPUT"
-            echo "url=${{ github.event.check_suite.url }}" >> "$GITHUB_OUTPUT"
-            BRANCH="${{ github.event.check_suite.head_branch }}"
-            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            {
+              echo 'title<<GHEOF'
+              echo "$PR_TITLE"
+              echo 'GHEOF'
+            } >> "$GITHUB_OUTPUT"
+            echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+            echo "author=$PR_AUTHOR" >> "$GITHUB_OUTPUT"
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == "pull_request_review" ]]; then
+            echo "type=review_${REVIEW_STATE}" >> "$GITHUB_OUTPUT"
+            {
+              echo 'title<<GHEOF'
+              echo "$PR_TITLE"
+              echo 'GHEOF'
+            } >> "$GITHUB_OUTPUT"
+            echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+            echo "author=$REVIEW_AUTHOR" >> "$GITHUB_OUTPUT"
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == "check_suite" ]]; then
+            echo "type=checks_${CHECK_CONCLUSION}" >> "$GITHUB_OUTPUT"
+            echo "url=$CHECK_URL" >> "$GITHUB_OUTPUT"
+            echo "branch=$CHECK_BRANCH" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Send Slack notification
-        if: env.SLACK_WEBHOOK_URL != ''
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
@@ -73,6 +91,7 @@ jobs:
               ;;
           esac
 
-          curl -sS -X POST "$SLACK_WEBHOOK_URL" \
-            -H 'Content-Type: application/json' \
-            -d "{\"text\": \"${TEXT}\"}"
+          jq -n --arg text "$TEXT" '{text: $text}' | \
+            curl -sS -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-Type: application/json' \
+              -d @-
