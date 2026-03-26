@@ -66,6 +66,9 @@ jobs:
             - Tests verify behavior, not implementation
             - PR title follows conventional commits
 
+            SKIP: Ignore all files under vendor/ — these are read-only vendored
+            upstream repos for local pattern identification, not our code.
+
             Key checks:
             - No ANTHROPIC_API_KEY usage (must use OAuth token)
             - No pickle.loads (use JSON serialization)
