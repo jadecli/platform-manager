@@ -1,0 +1,110 @@
+# Brewfile — jadecli ecosystem (macOS)
+# Anthropic-aligned toolchain. No competitor AI tools.
+# Usage: brew bundle --file=bootstrap/Brewfile
+
+# === Runtimes ===
+brew "fnm"            # Node version manager
+brew "mise"           # Multi-runtime version manager
+brew "node"           # Node.js (mise-managed version preferred)
+brew "python@3.14"    # Python (mise-managed version preferred)
+# Rust: installed via rustup, not brew
+# uv: installed via curl installer
+
+# === Shell & Terminal ===
+brew "zsh"
+brew "zsh-autosuggestions"
+brew "zsh-completions"
+brew "zsh-syntax-highlighting"
+brew "antidote"       # Zsh plugin manager
+brew "starship"       # Cross-shell prompt
+brew "tmux"           # Terminal multiplexer
+
+# === File Navigation ===
+brew "bat"            # Cat replacement with syntax highlighting
+brew "eza"            # Ls replacement
+brew "fd"             # Find replacement
+brew "fzf"            # Fuzzy finder
+brew "ripgrep"        # Grep replacement (used by Claude Code internally)
+brew "tree"           # Directory tree
+brew "yazi"           # Terminal file manager
+brew "zoxide"         # Smart cd
+brew "tldr"           # Quick man pages
+
+# === Git & GitHub ===
+brew "git"
+brew "git-cliff"      # Changelog generation
+brew "git-delta"      # Diff pager
+brew "git-filter-repo"
+brew "git-lfs"
+brew "gh"             # GitHub CLI
+brew "lazygit"        # Git TUI
+brew "difftastic"     # Structural diff
+brew "gitleaks"       # Secrets scanning
+brew "pre-commit"     # Git hook manager
+
+# === MCP / Anthropic Ecosystem ===
+brew "github-mcp-server"
+brew "slack-mcp-server"
+brew "claude-squad"   # Multi-agent orchestration
+
+# === LSP & Code Quality ===
+brew "neovim"
+brew "lua-language-server"
+brew "gopls"          # Go LSP
+brew "taplo"          # TOML LSP + formatter
+brew "shellcheck"     # Shell linter
+brew "shfmt"          # Shell formatter
+
+# === Database (Neon Postgres) ===
+brew "pgcli"          # Postgres CLI with autocomplete
+brew "libpq"          # PostgreSQL client lib
+brew "neonctl"        # Neon CLI
+brew "lazysql"        # SQL TUI
+
+# === Security ===
+brew "gnupg"
+brew "pinentry"
+brew "pass"           # Password manager
+
+# === Network / Infra ===
+brew "curl"
+brew "wget"
+brew "cloudflared"    # Cloudflare tunnel
+brew "tailscale"      # VPN mesh
+
+# === Containers ===
+brew "podman"
+
+# === Build Tools ===
+brew "cmake"
+brew "autoconf"
+
+# === Data CLI ===
+brew "jq"             # JSON processor
+brew "yq"             # YAML processor
+brew "tokei"          # Code statistics
+
+# === Task Runners ===
+brew "just"           # Command runner
+brew "task"           # Taskfile runner
+
+# === Utilities ===
+brew "coreutils"      # GNU core utils
+brew "mas"            # Mac App Store CLI
+brew "duti"           # Default app setter
+
+# === Casks (GUI Apps) ===
+cask "1password"
+cask "1password-cli"
+cask "alacritty"
+cask "claude-devtools"
+cask "cursor"
+cask "docker-desktop"
+cask "font-fira-code-nerd-font"
+cask "font-jetbrains-mono"
+cask "font-jetbrains-mono-nerd-font"
+cask "ghostree"
+cask "ghostty"
+cask "iterm2"
+cask "raycast"
+cask "visual-studio-code"

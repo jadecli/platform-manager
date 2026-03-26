@@ -4,11 +4,16 @@ set -euo pipefail
 
 CLAUDE_VER=$(jq -r '.runtime."claude-cli"' "$VERSIONS")
 
-# --- Claude Code CLI ---
-CURRENT_CLAUDE=$(claude --version 2>/dev/null || echo "none")
-if [[ "$CURRENT_CLAUDE" != *"$CLAUDE_VER"* ]]; then
-  echo "Installing Claude Code CLI $CLAUDE_VER..."
-  $DRY_RUN || npm install -g "@anthropic-ai/claude-code@$CLAUDE_VER"
+# --- Claude Code CLI (native installer, NOT npm — npm path is deprecated) ---
+CURRENT_CLAUDE=$(claude --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "none")
+if [[ "$CURRENT_CLAUDE" != "$CLAUDE_VER" ]]; then
+  echo "Installing Claude Code CLI $CLAUDE_VER via native installer..."
+  $DRY_RUN || curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_VER"
+  # Migrate from npm if still installed
+  if npm list -g @anthropic-ai/claude-code &>/dev/null 2>&1; then
+    echo "  Removing deprecated npm install..."
+    $DRY_RUN || npm uninstall -g @anthropic-ai/claude-code
+  fi
 fi
 
 # --- Auth check ---
@@ -54,11 +59,25 @@ fi
 # Deploy jadecli team policy
 $DRY_RUN || cat > "$MANAGED_DIR/00-jadecli-security.json" << 'POLICY'
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"
+    "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "sandbox": {
+    "failIfUnavailable": true
   }
 }
 POLICY
+
+# Linux: install sandbox deps
+if [[ "$PLATFORM" == "linux" ]]; then
+  if ! command -v bwrap &>/dev/null; then
+    echo "  Installing sandbox deps (bubblewrap + socat)..."
+    $DRY_RUN || sudo apt-get install -y -qq bubblewrap socat
+  fi
+fi
 
 echo "  Claude: $(claude --version 2>/dev/null || echo 'not installed')"
 echo "  Config: ${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
