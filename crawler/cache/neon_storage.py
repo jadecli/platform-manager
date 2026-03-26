@@ -25,9 +25,9 @@ Schema (auto-created on first use):
 
 from __future__ import annotations
 
+import json
 import logging
 import os
-import pickle
 from time import time
 from typing import TYPE_CHECKING
 
@@ -94,7 +94,7 @@ class NeonCacheStorage:
                 logger.debug("Cache expired for %s (%.0fs old)", url, age)
                 return None
 
-        headers = Headers(pickle.loads(bytes(headers_bytes)))
+        headers = Headers(json.loads(bytes(headers_bytes)))
         body = bytes(body) if body else b""
         respcls = responsetypes.from_args(headers=headers, url=url)
         return respcls(url=url, headers=headers, status=status, body=body)
@@ -103,7 +103,7 @@ class NeonCacheStorage:
         self, spider: Spider, request: Request, response: Response
     ) -> None:
         fp = self._fingerprint(request)
-        headers_bytes = pickle.dumps(dict(response.headers))
+        headers_bytes = json.dumps({k.decode(): [v.decode() for v in vals] for k, vals in response.headers.items()}).encode()
 
         with self.conn.cursor() as cur:
             cur.execute(

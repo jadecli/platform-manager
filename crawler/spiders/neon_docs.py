@@ -47,7 +47,7 @@ class NeonDocsSpider(scrapy.Spider):
             line = line.strip()
             if line.startswith("https://neon.com/docs/"):
                 # Fetch markdown version
-                url = line.rstrip(".md")
+                url = line.removesuffix(".md")
                 if not url.endswith(".md"):
                     url += ".md"
                 yield scrapy.Request(url, callback=self.parse_doc)

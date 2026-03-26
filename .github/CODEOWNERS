@@ -1,0 +1,5 @@
+# Security-sensitive files require admin review
+/.github/workflows/  @alex-jadecli
+/hooks/              @alex-jadecli
+/settings.json       @alex-jadecli
+/SECURITY.md         @alex-jadecli

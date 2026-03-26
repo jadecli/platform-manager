@@ -1,5 +1,6 @@
 ---
 name: repo-context
+effort: low
 description: >
   Loads context from GitHub repos by reading standard files (CLAUDE.md, README.md, AGENTS.md,
   CONTRIBUTING.md, CHANGELOG.md). Use when encountering a new repo, cloning a repo, starting

@@ -21,6 +21,28 @@
           }
         ]
       }
+    ],
+    "CwdChanged": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/alexzh/jadecli-ecosystem/scripts/session-init.sh"
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[task-created] $(echo $HOOK_INPUT | jq -r '.tool_input.subject // \"untitled\"')\" >> /tmp/jadecli-tasks.log"
+          }
+        ]
+      }
     ]
   }
 }
