@@ -31,4 +31,5 @@ jobs:
         with:
           claude-api-key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           custom-security-scan-instructions: .github/custom-security-categories.txt
+          exclude-directories: vendor
           model: claude-sonnet-4-6
