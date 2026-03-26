@@ -1,6 +1,13 @@
 - Imperative mood, 50-char subject line, body explains why not what.
 - One logical change per commit. Small, focused PRs.
 - Run tests before committing. If no test suite, at least lint.
-- Use `git add -p` for partial staging when a file has multiple logical changes.
-- Branch naming: `<type>/<short-description>` (e.g., `feat/add-auth`, `fix/null-check`).
+- Branch naming: `<type>/pm-<N>-<short-desc>` or `claude/<type>/pm-<N>-<desc>`.
 - Squash fixup commits before merge. Keep history linear when possible.
+- NEVER commit directly to the checked-out branch when working on platform-manager.
+- Use `/worktree` or `EnterWorktree` to create an isolated worktree for every change.
+- This prevents conflicts when 2+ agents work concurrently on the same device.
+- Each worktree gets its own branch, working tree, and index — fully independent git state.
+- After work is done, push the worktree branch and create a PR. Never merge into main locally.
+- No silent errors. No gradual degradation. If a command fails, surface it immediately.
+- Prefer Anthropic-maintained tooling and package managers (brew, npm, uv, cargo).
+- Minimize third-party attack surface. Vendored dependencies are audited in vendor/.

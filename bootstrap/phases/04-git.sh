@@ -77,6 +77,14 @@ INC
   fi
 done
 
+# --- Pre-push hook: block direct main pushes from agents ---
+HOOK_SRC="$REPO_ROOT/bootstrap/git-hooks/pre-push"
+HOOK_DST="$REPO_ROOT/.git/hooks/pre-push"
+if [[ -f "$HOOK_SRC" ]]; then
+  $DRY_RUN || ln -sf "$HOOK_SRC" "$HOOK_DST"
+  echo "  Pre-push hook installed (blocks agent pushes to main)"
+fi
+
 # --- Verify signing works ---
 echo "  Verifying commit signing..."
 if git config --global user.signingkey &>/dev/null; then
