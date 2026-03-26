@@ -1,24 +1,34 @@
 #!/usr/bin/env bash
-# Pre-push hook: prevent direct pushes to main from Claude agents.
-# CI/CD hotfixes (.github/) are exempt when explicitly confirmed.
+# Pre-push hook: enforce worktree-based workflow for Claude agents.
+#
+# Why: 2+ agents working concurrently on the same device cause conflicts
+# when committing to the same branch. Worktrees give each agent its own
+# branch, working tree, and index — fully isolated git state.
+#
+# Human pushes pass through. CI hotfixes exempt via --no-verify.
+# Ref: code.claude.com/docs/en/common-workflows#run-parallel-claude-code-sessions-with-git-worktrees
 # Install: ln -sf ../../bootstrap/git-hooks/pre-push .git/hooks/pre-push
+set -euo pipefail
+
+# Only enforce in Claude agent context
+if [[ -z "${CLAUDE_SESSION_ID:-}" && -z "${CLAUDE_CODE_ENTRY_POINT:-}" ]]; then
+  exit 0
+fi
 
 while read -r local_ref local_sha remote_ref remote_sha; do
-  if [[ "$remote_ref" == "refs/heads/main" ]]; then
-    # Allow if not in a Claude session (human push)
-    if [[ -z "${CLAUDE_SESSION_ID:-}" && -z "${CLAUDE_CODE_ENTRY_POINT:-}" ]]; then
-      continue
-    fi
-
-    # Block agent pushes to main
-    echo "error: Direct push to main blocked."
+  if [[ "$remote_ref" == "refs/heads/main" || "$remote_ref" == "refs/heads/master" ]]; then
     echo ""
-    echo "  Use a feature branch + PR instead:"
-    echo "    git checkout -b <type>/pm-<N>-<desc>"
-    echo "    git push -u origin <branch>"
-    echo "    gh pr create"
+    echo "  error: Direct push to main/master blocked (agent context detected)."
     echo ""
-    echo "  For CI hotfixes only: git push origin main --no-verify"
+    echo "  Use worktrees for isolated parallel work:"
+    echo "    /worktree                       # create isolated worktree"
+    echo "    <make changes, commit>          # work in worktree branch"
+    echo "    git push -u origin <branch>     # push worktree branch"
+    echo "    gh pr create                    # create PR for review"
+    echo ""
+    echo "  No silent errors. No gradual degradation."
+    echo "  CI hotfix bypass: git push --no-verify"
+    echo ""
     exit 1
   fi
 done
