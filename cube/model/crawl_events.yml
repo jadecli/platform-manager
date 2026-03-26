@@ -1,0 +1,175 @@
+cubes:
+  - name: crawl_events
+    sql_table: fact_crawl_events
+    description: >
+      Grain: one page visit per crawl run. Tracks what was crawled, whether it changed,
+      response times, and cache hit rates.
+
+    joins:
+      - name: source
+        sql: "{CUBE}.source_key = {source.source_key}"
+        relationship: many_to_one
+      - name: page
+        sql: "{CUBE}.page_key = {page.page_key}"
+        relationship: many_to_one
+      - name: crawl_run
+        sql: "{CUBE}.run_key = {crawl_run.run_key}"
+        relationship: many_to_one
+      - name: date
+        sql: "{CUBE}.date_key = {date.date_key}"
+        relationship: many_to_one
+
+    measures:
+      - name: total_events
+        type: count
+      - name: pages_changed
+        type: count
+        filters:
+          - sql: "{CUBE}.changed = TRUE"
+      - name: cache_hits
+        type: count
+        filters:
+          - sql: "{CUBE}.from_cache = TRUE"
+      - name: cache_miss_rate
+        type: number
+        sql: >
+          1.0 - (CAST({cache_hits} AS FLOAT) / NULLIF({total_events}, 0))
+      - name: avg_response_time
+        type: avg
+        sql: response_time_ms
+      - name: total_bytes
+        type: sum
+        sql: content_length
+      - name: change_rate
+        type: number
+        sql: >
+          CAST({pages_changed} AS FLOAT) / NULLIF({total_events}, 0)
+
+    dimensions:
+      - name: http_status
+        sql: http_status
+        type: number
+      - name: changed
+        sql: changed
+        type: boolean
+      - name: from_cache
+        sql: from_cache
+        type: boolean
+      - name: crawled_at
+        sql: crawled_at
+        type: time
+
+  - name: source
+    sql_table: dim_source
+    description: Conformed dimension for crawl sources (claude_docs, neon_docs, etc.)
+
+    dimensions:
+      - name: source_key
+        sql: source_key
+        type: number
+        primary_key: true
+      - name: source_id
+        sql: source_id
+        type: string
+      - name: source_name
+        sql: source_name
+        type: string
+      - name: page_count
+        sql: page_count
+        type: number
+      - name: rate_strategy
+        sql: rate_strategy
+        type: string
+      - name: plugin_name
+        sql: plugin_name
+        type: string
+      - name: github_org
+        sql: github_org
+        type: string
+
+  - name: page
+    sql_table: dim_page
+    description: >
+      SCD Type 2 page dimension. New row when content changes.
+      Query with is_current = TRUE for latest version.
+
+    dimensions:
+      - name: page_key
+        sql: page_key
+        type: number
+        primary_key: true
+      - name: url
+        sql: url
+        type: string
+      - name: title
+        sql: title
+        type: string
+      - name: section
+        sql: section
+        type: string
+      - name: content_hash
+        sql: content_hash
+        type: string
+      - name: is_current
+        sql: is_current
+        type: boolean
+      - name: version
+        sql: version
+        type: number
+
+  - name: crawl_run
+    sql_table: dim_crawl_run
+    description: Crawl execution metadata
+
+    dimensions:
+      - name: run_key
+        sql: run_key
+        type: number
+        primary_key: true
+      - name: spider
+        sql: spider
+        type: string
+      - name: reason
+        sql: reason
+        type: string
+      - name: is_test
+        sql: is_test
+        type: boolean
+
+    measures:
+      - name: total_runs
+        type: count
+      - name: avg_duration
+        type: avg
+        sql: elapsed_seconds
+      - name: total_items
+        type: sum
+        sql: items_scraped
+      - name: total_cache_hits
+        type: sum
+        sql: cache_hits
+
+  - name: date
+    sql_table: dim_date
+    description: Date dimension (pre-populated for 2026)
+
+    dimensions:
+      - name: date_key
+        sql: date_key
+        type: number
+        primary_key: true
+      - name: full_date
+        sql: full_date
+        type: time
+      - name: year
+        sql: year
+        type: number
+      - name: month
+        sql: month
+        type: number
+      - name: day_of_week
+        sql: day_of_week
+        type: number
+      - name: is_weekend
+        sql: is_weekend
+        type: boolean

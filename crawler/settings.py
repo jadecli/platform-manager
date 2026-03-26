@@ -44,6 +44,34 @@ EXTENSIONS = {
     "crawler.telemetry.stats_collector.TelemetryExtension": 500,
 }
 
+# HTTP Cache — Neon-backed with RFC2616 conditional requests.
+# Scrapy sends If-Modified-Since / If-None-Match headers automatically.
+# Pages returning 304 Not Modified are served from Neon cache (zero re-download).
+# Set DATABASE_URL env var or in .env to enable Neon storage.
+import os
+_has_db = bool(os.environ.get("DATABASE_URL"))
+HTTPCACHE_ENABLED = True
+HTTPCACHE_POLICY = "scrapy.extensions.httpcache.RFC2616Policy"
+HTTPCACHE_STORAGE = (
+    "crawler.cache.neon_storage.NeonCacheStorage" if _has_db
+    else "scrapy.extensions.httpcache.FilesystemCacheStorage"
+)
+HTTPCACHE_EXPIRATION_SECS = 86400  # 24h — refetch pages daily at most
+HTTPCACHE_DIR = "crawler/.httpcache"  # fallback when no DATABASE_URL
+HTTPCACHE_GZIP = True
+HTTPCACHE_IGNORE_HTTP_CODES = [500, 502, 503, 504]
+
+# AutoThrottle — adapts to server response time
+AUTOTHROTTLE_ENABLED = True
+AUTOTHROTTLE_START_DELAY = 1
+AUTOTHROTTLE_TARGET_CONCURRENCY = 2.0
+AUTOTHROTTLE_MAX_DELAY = 30
+
+# Retry
+RETRY_ENABLED = True
+RETRY_TIMES = 3
+RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408, 429]
+
 # Logging
 LOG_LEVEL = "INFO"
 LOG_FORMAT = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"

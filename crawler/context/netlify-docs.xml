@@ -9,13 +9,30 @@
     <sections>9 (development, frameworks, build, data-storage, forms, domains, team, billing, general)</sections>
     <format>HTML (Astro/Starlight-based, dark theme, pagefind search)</format>
     <update-frequency>Regular — Netlify ships platform updates frequently</update-frequency>
-    <plugin>netlify-skills@netlify-context-and-tools (installed)</plugin>
-    <plugin-source>https://github.com/tobinsouth/context-and-tools</plugin-source>
-    <plugin-note>
-      Author tobinsouth is an Anthropic contributor. Plugin has 12 skills covering
-      functions, edge functions, blobs, database, image CDN, forms, config, CLI,
-      frameworks, caching, AI gateway, and deployment.
-    </plugin-note>
+    <!-- Enhanced metadata -->
+    <github-org>netlify</github-org>
+    <github-repo>tobinsouth/context-and-tools</github-repo>
+    <repo-files checked="CLAUDE.md,README.md,skills/CLAUDE.md">
+      <claude-md>Top-level CLAUDE.md references skills/ and context/ dirs. Codex and Cursor config also present.</claude-md>
+      <readme>Netlify platform skills for AI coding agents. Marketplace: netlify-context-and-tools.</readme>
+      <skills-claude-md>12 skill directories with Netlify-specific instructions.</skills-claude-md>
+    </repo-files>
+    <plugin name="netlify-skills" marketplace="netlify-context-and-tools" installed="true">
+      12 skills: functions, edge-functions, blobs, db, image-cdn, forms,
+      frameworks, caching, config, cli-and-deploy, deploy, ai-gateway
+    </plugin>
+    <skills>
+      <skill name="netlify-functions" source="netlify-skills"/>
+      <skill name="netlify-edge-functions" source="netlify-skills"/>
+      <skill name="netlify-blobs" source="netlify-skills"/>
+      <skill name="netlify-db" source="netlify-skills"/>
+      <skill name="netlify-config" source="netlify-skills"/>
+      <skill name="netlify-cli-and-deploy" source="netlify-skills"/>
+    </skills>
+    <documentation>
+      <doc url="https://docs.netlify.com/llms.txt" type="llms-index">78 page doc index</doc>
+      <doc url="https://docs.netlify.com/api/" type="api-spec">Netlify API reference</doc>
+    </documentation>
   </source>
 
   <rate-limits>

@@ -1,0 +1,50 @@
+cubes:
+  - name: claude_usage
+    sql_table: fact_claude_usage
+    description: >
+      Claude API token and tool call usage per operation.
+      Grain: one Claude API call.
+
+    joins:
+      - name: source
+        sql: "{CUBE}.source_key = {source.source_key}"
+        relationship: many_to_one
+      - name: date
+        sql: "{CUBE}.date_key = {date.date_key}"
+        relationship: many_to_one
+
+    measures:
+      - name: total_tokens
+        type: sum
+        sql: total_tokens
+      - name: total_input_tokens
+        type: sum
+        sql: input_tokens
+      - name: total_output_tokens
+        type: sum
+        sql: output_tokens
+      - name: total_tool_calls
+        type: sum
+        sql: tool_calls
+      - name: total_cost
+        type: sum
+        sql: cost_usd
+      - name: avg_tokens_per_op
+        type: avg
+        sql: total_tokens
+      - name: total_operations
+        type: count
+
+    dimensions:
+      - name: operation
+        sql: operation
+        type: string
+      - name: model
+        sql: model
+        type: string
+      - name: surface
+        sql: surface
+        type: string
+      - name: recorded_at
+        sql: recorded_at
+        type: time

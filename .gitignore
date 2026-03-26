@@ -1,0 +1,18 @@
+# Secrets
+.env
+cube/.env
+*.env.local
+
+# Caches
+crawler/.httpcache/
+crawler/indexes/*.json
+crawler/indexes/*.jsonl
+crawler/telemetry/*.jsonl
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+
+# OS
+.DS_Store
