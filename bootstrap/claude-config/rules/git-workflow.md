@@ -2,5 +2,8 @@
 - One logical change per commit. Small, focused PRs.
 - Run tests before committing. If no test suite, at least lint.
 - Use `git add -p` for partial staging when a file has multiple logical changes.
-- Branch naming: `<type>/<short-description>` (e.g., `feat/add-auth`, `fix/null-check`).
+- Branch naming: `<type>/pm-<N>-<short-desc>` or `claude/<type>/pm-<N>-<desc>`.
 - Squash fixup commits before merge. Keep history linear when possible.
+- NEVER commit or push directly to main. Always use a feature branch + PR.
+- Agents: use worktrees (`/worktree` or `--worktree`) for isolated parallel work.
+- CI/CD hotfixes to .github/workflows/ are the ONLY exception for direct main pushes.

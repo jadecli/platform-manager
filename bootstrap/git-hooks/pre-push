@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Pre-push hook: prevent direct pushes to main from Claude agents.
+# CI/CD hotfixes (.github/) are exempt when explicitly confirmed.
+# Install: ln -sf ../../bootstrap/git-hooks/pre-push .git/hooks/pre-push
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [[ "$remote_ref" == "refs/heads/main" ]]; then
+    # Allow if not in a Claude session (human push)
+    if [[ -z "${CLAUDE_SESSION_ID:-}" && -z "${CLAUDE_CODE_ENTRY_POINT:-}" ]]; then
+      continue
+    fi
+
+    # Block agent pushes to main
+    echo "error: Direct push to main blocked."
+    echo ""
+    echo "  Use a feature branch + PR instead:"
+    echo "    git checkout -b <type>/pm-<N>-<desc>"
+    echo "    git push -u origin <branch>"
+    echo "    gh pr create"
+    echo ""
+    echo "  For CI hotfixes only: git push origin main --no-verify"
+    exit 1
+  fi
+done
+
+exit 0
