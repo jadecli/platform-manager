@@ -41,8 +41,9 @@ jobs:
       - name: Extract Linear ticket from branch
         id: ticket
         if: github.event_name == 'pull_request'
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
           if [[ "$BRANCH" =~ pm-([0-9]+) ]]; then
             echo "id=PM-${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
             echo "url=https://linear.app/jadecli/issue/PM-${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
@@ -77,19 +78,20 @@ jobs:
           trigger_phrase: "@claude"
 
       - name: Notify on review complete
-        if: always() && github.event_name == 'pull_request' && env.SLACK_WEBHOOK_URL != ''
+        if: always() && github.event_name == 'pull_request' && secrets.SLACK_WEBHOOK_URL != ''
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          JOB_STATUS: ${{ job.status }}
         run: |
-          PR="#${{ github.event.pull_request.number }}"
-          TITLE="${{ github.event.pull_request.title }}"
-          URL="${{ github.event.pull_request.html_url }}"
-          STATUS="${{ job.status }}"
-          if [[ "$STATUS" == "success" ]]; then
-            TEXT=":brain: *Claude reviewed PR ${PR}* — review complete\n<${URL}|${TITLE}>\n_Check review comments, merge if approved_"
+          if [[ "$JOB_STATUS" == "success" ]]; then
+            TEXT=":brain: *Claude reviewed PR #${PR_NUMBER}* — review complete\n<${PR_URL}|${PR_TITLE}>\n_Check review comments, merge if approved_"
           else
-            TEXT=":warning: *Claude review failed* on PR ${PR}\n<${URL}|${TITLE}>"
+            TEXT=":warning: *Claude review failed* on PR #${PR_NUMBER}\n<${PR_URL}|${PR_TITLE}>"
           fi
-          curl -sS -X POST "$SLACK_WEBHOOK_URL" \
-            -H 'Content-Type: application/json' \
-            -d "{\"text\": \"${TEXT}\"}"
+          jq -n --arg text "$TEXT" '{text: $text}' | \
+            curl -sS -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-Type: application/json' \
+              -d @-
