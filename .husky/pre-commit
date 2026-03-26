@@ -1,0 +1,5 @@
+# Typecheck staged TS files (zero-cost gate, catches type errors before commit)
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' || true)
+if [ -n "$STAGED_TS" ]; then
+  npx tsc --noEmit 2>&1 | head -20
+fi

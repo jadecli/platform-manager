@@ -1,0 +1,35 @@
+**Crawler SSRF:**
+- Scrapy Request() constructed from untrusted input (llms.txt contents, user input)
+- allowed_domains not set or overly broad
+- start_urls pointing to internal IPs (127.0.0.1, 169.254.x, 10.x, 172.16-31.x)
+- Redirects to internal resources not blocked
+- DNS rebinding attacks via crafted hostnames
+
+**Crawler Data Leakage:**
+- Crawled content written to paths outside .gitignore coverage
+- API keys or tokens appearing in crawled HTML stored in cache/output
+- DATABASE_URL or connection strings in log output
+- Raw response bodies containing secrets persisted to Neon without sanitization
+- Scrapy LOG_FORMAT exposing auth headers or cookies
+
+**Cache Poisoning:**
+- pickle.loads() on data from Neon http_cache table (deserialization attack surface)
+- Cached responses served without validating stored content-type
+- Cache key collisions allowing response substitution
+- Stale cache served after TTL expiration due to clock skew
+
+**SQL Injection in Neon Pipelines:**
+- String interpolation in SQL queries (f-strings, .format(), % operator with dicts)
+- Unsanitized spider names or URLs in INSERT statements
+- Dynamic table names constructed from user input
+
+**Dependency Confusion:**
+- npm packages installed from unexpected registries
+- pip packages with typosquatting names
+- Vendored repos containing their own .npmrc or .pypirc with alternate registries
+
+**Credential Exposure in Vendored Code:**
+- .git directories remaining after vendor strip
+- GitHub tokens in .github/workflows of vendored repos
+- API keys in test fixtures or example files of vendored code
+- OAuth tokens in config files (credentials.json, auth.json)

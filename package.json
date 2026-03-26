@@ -1,0 +1,35 @@
+{
+  "name": "platform-manager",
+  "version": "0.1.0",
+  "description": "Claude Code plugin: LSP servers, agentic crawler, and ecosystem management for jadecli",
+  "type": "module",
+  "scripts": {
+    "prepare": "husky",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major",
+    "release:first": "standard-version --first-release",
+    "crawl:test": "cd crawler && python -m crawler.tests.sample_crawl",
+    "crawl:docs": "cd crawler && python -m crawler.run docs",
+    "crawl:all": "cd crawler && python -m crawler.run all",
+    "typecheck": "cd packages/scrapy-cli && npx tsc --noEmit",
+    "validate": "npx tsx packages/scrapy-cli/src/cli.ts validate"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jadecli/platform-manager.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jadecli/platform-manager/issues"
+  },
+  "homepage": "https://github.com/jadecli/platform-manager#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "husky": "^9.1.7",
+    "standard-version": "^9.5.0"
+  }
+}

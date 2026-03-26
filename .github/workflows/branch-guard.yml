@@ -1,0 +1,85 @@
+name: Branch Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Validate branch and PR title conventions
+        env:
+          BRANCH: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Allow dependabot and release branches
+          if [[ "$BRANCH" =~ ^(dependabot/|release-please-) ]]; then
+            echo "Exempt branch: $BRANCH"
+            exit 0
+          fi
+
+          TYPES="feat|fix|docs|ci|refactor|test|chore|hotfix|perf|security|crawl"
+          ERRORS=()
+
+          # Branch name: <type>/pm-<N>-desc or claude/<type>/pm-<N>-desc
+          if [[ "$BRANCH" =~ ^($TYPES)/pm-([0-9]+) ]]; then
+            TYPE="${BASH_REMATCH[1]}"
+            TICKET_NUM="${BASH_REMATCH[2]}"
+            TICKET="PM-${TICKET_NUM}"
+            AUTHOR="human"
+          elif [[ "$BRANCH" =~ ^claude/($TYPES)/pm-([0-9]+) ]]; then
+            TYPE="${BASH_REMATCH[1]}"
+            TICKET_NUM="${BASH_REMATCH[2]}"
+            TICKET="PM-${TICKET_NUM}"
+            AUTHOR="claude"
+          else
+            ERRORS+=("branch")
+          fi
+
+          # PR title: <type>: desc or <type>(scope): desc
+          if [[ ! "$PR_TITLE" =~ ^($TYPES)(\(.+\))?: ]]; then
+            ERRORS+=("title")
+          fi
+
+          if [ ${#ERRORS[@]} -eq 0 ]; then
+            PREFIX=""
+            if [ "$AUTHOR" = "claude" ]; then PREFIX="(claude) "; fi
+            echo "${PREFIX}Branch links to Linear ticket: $TICKET"
+            echo "https://linear.app/jadecli/issue/$TICKET"
+
+            TITLE_TYPE=$(echo "$PR_TITLE" | grep -oE "^($TYPES)" || true)
+            if [ -n "$TITLE_TYPE" ] && [ "$TITLE_TYPE" != "$TYPE" ]; then
+              echo "::warning::Branch type '$TYPE' differs from PR title type '$TITLE_TYPE'"
+            fi
+            exit 0
+          fi
+
+          echo "::error::Branch or PR title does not match required conventions."
+
+          EXISTING=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json comments --jq '[.comments[].body | select(contains("<!-- branch-guard -->"))] | length')
+          if [ "$EXISTING" = "0" ]; then
+            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "<!-- branch-guard -->
+          **Branch or PR title does not match conventions.**
+
+          | Creator | Pattern | Example |
+          |---------|---------|---------|
+          | Human | \`<type>/pm-<N>-description\` | \`feat/pm-42-add-spider\` |
+          | Claude | \`claude/<type>/pm-<N>-description\` | \`claude/fix/pm-42-cache-bug\` |
+
+          PR title: \`<type>:\` or \`<type>(scope):\`
+          Types: \`feat\`, \`fix\`, \`docs\`, \`ci\`, \`refactor\`, \`test\`, \`chore\`, \`security\`, \`crawl\`"
+          fi
+
+          exit 1

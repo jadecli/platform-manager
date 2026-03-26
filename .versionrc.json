@@ -1,0 +1,19 @@
+{
+  "types": [
+    {"type": "feat", "section": "Features"},
+    {"type": "fix", "section": "Bug Fixes"},
+    {"type": "security", "section": "Security"},
+    {"type": "crawl", "section": "Crawler"},
+    {"type": "perf", "section": "Performance"},
+    {"type": "refactor", "section": "Refactoring"},
+    {"type": "docs", "section": "Documentation"},
+    {"type": "test", "section": "Tests"},
+    {"type": "build", "section": "Build System"},
+    {"type": "ci", "section": "CI/CD"},
+    {"type": "chore", "hidden": true},
+    {"type": "style", "hidden": true},
+    {"type": "revert", "section": "Reverts"}
+  ],
+  "commitUrlFormat": "https://github.com/jadecli/platform-manager/commit/{{hash}}",
+  "compareUrlFormat": "https://github.com/jadecli/platform-manager/compare/{{previousTag}}...{{currentTag}}"
+}

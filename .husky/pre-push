@@ -1,0 +1,20 @@
+# Validate branch name before push. Prevents pushing non-conventional branches.
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+TYPES="feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|security|crawl"
+
+# Allow main/develop/release
+case "$BRANCH" in
+  main|develop|release*) exit 0 ;;
+esac
+
+# Human: <type>/pm-<N>-desc  Claude: claude/<type>/pm-<N>-desc
+if echo "$BRANCH" | grep -qE "^($TYPES)/pm-[0-9]+" || \
+   echo "$BRANCH" | grep -qE "^claude/($TYPES)/pm-[0-9]+"; then
+  exit 0
+fi
+
+echo "error: branch '$BRANCH' does not match naming convention"
+echo "  Human:  <type>/pm-<N>-description"
+echo "  Claude: claude/<type>/pm-<N>-description"
+echo "  Types:  feat|fix|docs|refactor|test|build|ci|chore|security|crawl"
+exit 1
