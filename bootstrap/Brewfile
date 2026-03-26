@@ -94,6 +94,7 @@ brew "mas"            # Mac App Store CLI
 brew "duti"           # Default app setter
 
 # === Casks (GUI Apps) ===
+cask "claude"            # Claude Desktop app
 cask "1password"
 cask "1password-cli"
 cask "alacritty"

@@ -45,4 +45,13 @@ for d in hooks commands rules agents output-styles skills; do
   [[ -d "$CONFIG_SRC/$d" ]] && link_dir "$CONFIG_SRC/$d" "$CLAUDE_DIR/$d"
 done
 
-echo "  Done: ~/.claude/ config symlinked to repo"
+# Claude Desktop config
+DESKTOP_SRC="$CONFIG_SRC/claude-desktop/claude_desktop_config.json"
+DESKTOP_DIR="$HOME/.config/claude-desktop"
+if [[ -f "$DESKTOP_SRC" ]]; then
+  mkdir -p "$DESKTOP_DIR"
+  link_file "$DESKTOP_SRC" "$DESKTOP_DIR/claude_desktop_config.json"
+  echo "  claude-desktop config"
+fi
+
+echo "  Done: config symlinked to repo"
