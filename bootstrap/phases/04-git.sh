@@ -2,9 +2,6 @@
 # Phase 04: Git config, SSH keys, commit signing, includeIf identity.
 set -euo pipefail
 
-ECOSYSTEM_ROOT="/Users/alexzh/jadecli-ecosystem"
-MANIFEST="$ECOSYSTEM_ROOT/manifest.xml"
-
 # --- Git global config ---
 echo "  Configuring git defaults..."
 $DRY_RUN || {
@@ -15,7 +12,7 @@ $DRY_RUN || {
   git config --global commit.gpgsign true
   git config --global tag.gpgsign true
   git config --global gpg.ssh.allowedSignersFile ~/.ssh/allowed_signers
-  git config --global credential.https://github.com.helper "!/opt/homebrew/bin/gh auth git-credential"
+  git config --global credential.https://github.com.helper "!$(command -v gh) auth git-credential"
 }
 
 # --- SSH key generation (if missing) ---

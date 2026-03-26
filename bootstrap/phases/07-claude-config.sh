@@ -12,24 +12,28 @@ mkdir -p "$CLAUDE_DIR"
 
 link_file() {
   local src="$1" dst="$2"
-  if [[ -L "$dst" ]]; then
-    /bin/rm "$dst"
-  elif [[ -e "$dst" ]]; then
-    /bin/mv "$dst" "${dst}.bak" 2>/dev/null || true
-  fi
-  $DRY_RUN || ln -s "$src" "$dst"
+  $DRY_RUN || {
+    if [[ -L "$dst" ]]; then
+      /bin/rm "$dst"
+    elif [[ -e "$dst" ]]; then
+      /bin/mv "$dst" "${dst}.bak" 2>/dev/null || true
+    fi
+    ln -s "$src" "$dst"
+  }
   echo "  $(basename "$dst")"
 }
 
 link_dir() {
   local src="$1" dst="$2"
-  if [[ -L "$dst" ]]; then
-    /bin/rm "$dst"
-  elif [[ -d "$dst" ]]; then
-    /bin/rm -rf "${dst}.bak" 2>/dev/null || true
-    /bin/mv "$dst" "${dst}.bak" 2>/dev/null || true
-  fi
-  $DRY_RUN || ln -s "$src" "$dst"
+  $DRY_RUN || {
+    if [[ -L "$dst" ]]; then
+      /bin/rm "$dst"
+    elif [[ -d "$dst" ]]; then
+      /bin/rm -rf "${dst}.bak" 2>/dev/null || true
+      /bin/mv "$dst" "${dst}.bak" 2>/dev/null || true
+    fi
+    ln -s "$src" "$dst"
+  }
   echo "  $(basename "$dst")/"
 }
 

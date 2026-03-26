@@ -15,7 +15,7 @@ if [[ "$PLATFORM" == "darwin" ]]; then
     $DRY_RUN || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
   # jq needed for version parsing
-  brew list jq &>/dev/null || brew install jq
+  brew list jq &>/dev/null || { $DRY_RUN || brew install jq; }
 elif [[ "$PLATFORM" == "linux" ]]; then
   if ! command -v jq &>/dev/null; then
     sudo apt-get update -qq && sudo apt-get install -y -qq jq curl git
@@ -28,7 +28,7 @@ if ! command -v mise &>/dev/null; then
   if [[ "$PLATFORM" == "darwin" ]]; then
     $DRY_RUN || brew install mise
   else
-    $DRY_RUN || curl https://mise.run | sh
+    $DRY_RUN || curl -fsSL https://mise.run | sh
   fi
 fi
 
