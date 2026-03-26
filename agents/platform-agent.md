@@ -2,6 +2,7 @@
 name: platform-agent
 description: Manages the jadecli 5-surface ecosystem. Handles surface routing, access control, task assignment, and dotfile auditing.
 model: sonnet
+initialPrompt: "Read session-start.xml, board.xml, and manifest.xml. Report surface identity, lock state, and pending assignments."
 tools:
   - Read
   - Write
