@@ -1,0 +1,270 @@
+{
+  "folders": [
+    {
+      "name": "repos",
+      "path": "."
+    },
+    {
+      "name": ".claude",
+      "path": "../.claude"
+    },
+    {
+      "name": "dotfiles",
+      "path": "../.config"
+    },
+    {
+      "name": "homebrew-etc",
+      "path": "/opt/homebrew/etc"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.DS_Store": true,
+      "**/__pycache__": true,
+      "**/node_modules": true,
+      "**/.tmp.drivedownload": true,
+      "**/.tmp.driveupload": true,
+      "**/.mypy_cache": true,
+      "**/.ruff_cache": true,
+      "**/.pytest_cache": true,
+      "**/*.egg-info": true,
+      "**/.scrapy": true
+    },
+    "search.exclude": {
+      "**/.claude/worktrees": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/.venv": true,
+      "**/node_modules": true,
+      "**/vendor/**/.git": true,
+      "**/vendor/**/node_modules": true,
+      "**/vendor/**/dist": true,
+      "**/crawl_output": true
+    },
+    "search.smartCase": true,
+    "search.showLineNumbers": true,
+    "files.associations": {
+      "versions.json": "json",
+      "hooks.json": "json",
+      "settings.json": "json",
+      "settings.local.json": "json",
+      "*.code-workspace": "jsonc",
+      ".prettierrc": "json",
+      "Brewfile": "ruby",
+      "Dockerfile.*": "dockerfile"
+    },
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.patterns": {
+      "package.json": "package-lock.json, yarn.lock, bun.lock, pnpm-lock.yaml, .npmrc, .node-version, commitlint.config.js",
+      "pyproject.toml": "poetry.lock, uv.lock, requirements*.txt, requirements*.lock, .python-version, setup.cfg, setup.py, MANIFEST.in, pytest.ini, tox.ini, ruff.toml",
+      "tsconfig.json": "tsconfig.*.json, .prettierrc, .prettierrc.json, .prettierignore, eslint.config.mjs, .eslintrc*"
+    },
+    "json.schemas": [
+      {
+        "fileMatch": [
+          "**/.claude/settings.json",
+          "**/.claude/settings.local.json",
+          "**/.claude/**/settings.json",
+          "**/.claude/**/settings.local.json",
+          "!**/node_modules/**"
+        ],
+        "url": "https://json.schemastore.org/claude-code-settings.json"
+      },
+      {
+        "fileMatch": ["**/.github/workflows/*.yml", "**/.github/workflows/*.yaml"],
+        "url": "https://json.schemastore.org/github-workflow.json"
+      },
+      {
+        "fileMatch": ["**/.github/actions/*/action.yml", "**/.github/actions/*/action.yaml"],
+        "url": "https://json.schemastore.org/github-action.json"
+      },
+      {
+        "fileMatch": ["**/tsconfig*.json"],
+        "url": "https://json.schemastore.org/tsconfig.json"
+      },
+      {
+        "fileMatch": ["**/package.json"],
+        "url": "https://json.schemastore.org/package.json"
+      }
+    ],
+    "yaml.schemas": {
+      "https://json.schemastore.org/github-workflow.json": "**/.github/workflows/*.{yml,yaml}",
+      "https://json.schemastore.org/github-action.json": "**/.github/actions/*/action.{yml,yaml}",
+      "https://json.schemastore.org/docker-compose.json": "**/docker-compose*.{yml,yaml}"
+    },
+    "editor.formatOnSave": true,
+    "editor.rulers": [110],
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "prettier.printWidth": 110,
+    "prettier.singleQuote": true,
+    "prettier.trailingComma": "all",
+    "eslint.useFlatConfig": true,
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.rulers": [100],
+      "editor.codeActionsOnSave": {
+        "source.fixAll.ruff": "explicit",
+        "source.organizeImports.ruff": "explicit"
+      }
+    },
+    "[shellscript]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format"
+    },
+    "[toml]": {
+      "editor.defaultFormatter": "tamasfe.even-better-toml"
+    },
+    "[markdown]": {
+      "editor.wordWrap": "on",
+      "editor.rulers": []
+    },
+    "typescript.preferences.importModuleSpecifier": "non-relative",
+    "typescript.tsdk": "packages/scrapy-cli/node_modules/typescript/lib",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.pythonVersion": "3.12",
+    "claudeCode.initialPermissionMode": "plan",
+    "claudeCode.preferredLocation": "sidebar",
+    "claudeCode.respectGitIgnore": true,
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.env.osx": {
+      "EDITOR": "code-insiders --wait"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "anthropic.claude-code",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "ms-python.python",
+      "charliermarsh.ruff",
+      "ms-python.vscode-pylance",
+      "redhat.vscode-yaml",
+      "tamasfe.even-better-toml",
+      "github.vscode-github-actions",
+      "foxundermoon.shell-format",
+      "timonwong.shellcheck",
+      "eamodio.gitlens",
+      "editorconfig.editorconfig"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": []
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build: validate",
+        "type": "shell",
+        "command": "npm run validate",
+        "options": { "cwd": "${workspaceFolder:repos}/platform-manager" },
+        "group": { "kind": "build", "isDefault": true },
+        "problemMatcher": ["$tsc"]
+      },
+      {
+        "label": "build: typecheck",
+        "type": "shell",
+        "command": "npm run typecheck",
+        "options": { "cwd": "${workspaceFolder:repos}/platform-manager" },
+        "group": "build",
+        "problemMatcher": ["$tsc"]
+      },
+      {
+        "label": "crawl: docs",
+        "type": "shell",
+        "command": "npm run crawl:docs",
+        "options": { "cwd": "${workspaceFolder:repos}/platform-manager" },
+        "group": "build"
+      },
+      {
+        "label": "crawl: all",
+        "type": "shell",
+        "command": "npm run crawl:all",
+        "options": { "cwd": "${workspaceFolder:repos}/platform-manager" },
+        "group": "build"
+      },
+      {
+        "label": "drift: @anthropic-ai/* npm versions",
+        "type": "shell",
+        "command": "printf '%-35s %s\\n' PACKAGE LATEST && for pkg in @anthropic-ai/sdk @anthropic-ai/claude-code @anthropic-ai/claude-agent-sdk @anthropic-ai/bedrock-sdk @anthropic-ai/vertex-sdk @anthropic-ai/foundry-sdk @anthropic-ai/tokenizer @anthropic-ai/dxt @anthropic-ai/mcpb @anthropic-ai/sandbox-runtime @anthropic-ai/claude-trace; do printf '%-35s %s\\n' \"$pkg\" \"$(npm view \"$pkg\" version 2>/dev/null || echo 'not found')\"; done",
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      },
+      {
+        "label": "drift: anthropics/ repo activity (7d)",
+        "type": "shell",
+        "command": "gh repo list anthropics --limit 78 --json name,pushedAt,primaryLanguage --jq '[.[] | select(.pushedAt > (now - 604800 | strftime(\"%Y-%m-%dT%H:%M:%SZ\")))] | sort_by(.pushedAt) | reverse | .[] | \"\\(.pushedAt[:10]) \\(.name) [\\(.primaryLanguage.name // \"-\")]\"'",
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      },
+      {
+        "label": "drift: runtime versions vs pins",
+        "type": "shell",
+        "command": "echo '=== versions.json pins ===' && jq -r '.runtime | to_entries[] | \"\\(.key): \\(.value)\"' versions.json && echo '' && echo '=== installed ===' && echo \"claude-cli: $(claude --version 2>/dev/null | head -1 || echo 'n/a')\" && echo \"node: $(node -v 2>/dev/null | tr -d v)\" && echo \"python: $(python3 -c 'import sys; print(\".\".join(map(str,sys.version_info[:3])))' 2>/dev/null)\" && echo \"rustc: $(rustc --version 2>/dev/null | awk '{print $2}')\" && echo \"uv: $(uv --version 2>/dev/null | awk '{print $2}')\" && echo '' && echo '=== anthropic CI pins ===' && echo 'node: 20 (anthropic-sdk-typescript, claude-code-action @types/node ^20)' && echo 'uv: 0.10.2 (anthropic-sdk-python CI)' && echo 'typescript: 5.8.3 (sdk + action)' && echo 'bun: 1.2.12 (claude-code-action CI)' && echo 'pyright: 1.1.399 (anthropic-sdk-python)'",
+        "options": { "cwd": "${workspaceFolder:repos}/platform-manager" },
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      },
+      {
+        "label": "drift: vendor commits vs upstream",
+        "type": "shell",
+        "command": "jq -r '.vendor | to_entries[] | select(.value.hash) | \"\\(.key) \\(.value.hash) \\(.value.date)\"' versions.json | while read repo hash date; do upstream=$(gh api \"repos/$repo/commits/main\" --jq '.sha[:12]' 2>/dev/null || echo 'err'); if [ \"$hash\" = \"$upstream\" ]; then echo \"✓ $repo  $hash\"; else echo \"✗ $repo  pinned=$hash ($date) upstream=$upstream\"; fi; done",
+        "options": { "cwd": "${workspaceFolder:repos}/platform-manager" },
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      },
+      {
+        "label": "drift: anthropic CI toolchain",
+        "type": "shell",
+        "command": "echo '=== SDK TypeScript ===' && echo 'packageManager: yarn@1.22.22' && echo 'node: 20 | ts: 5.8.3' && echo 'eslint: 9.x flat config + typescript-eslint 8.31.1' && echo 'prettier: ^3.0.0 (110 cols, singleQuote, trailingComma all)' && echo 'jest + @swc/jest' && echo '' && echo '=== SDK Python ===' && echo 'uv >=0.9 (CI: 0.10.2) | hatchling 1.26.3' && echo 'python: >=3.9 (dev: 3.9.18)' && echo 'ruff format (120 cols) + ruff check + pyright 1.1.399 + mypy 1.17' && echo 'pytest + xdist + asyncio' && echo '' && echo '=== claude-code-action ===' && echo 'bun 1.2.12 | ts ^5.8.3' && echo 'prettier 3.5.3' && echo 'bun test' && echo '' && echo '=== claude-agent-sdk-python ===' && echo 'pip + hatchling | python >=3.10' && echo 'ruff + mypy (strict) | pytest' && echo '' && echo '=== Shared patterns ===' && echo 'CI runner: ubuntu-latest' && echo 'All TS repos: strict tsconfig + noUncheckedIndexedAccess' && echo 'All Python repos: hatchling build backend' && echo 'All Python repos: ruff (not black) for formatting' && echo 'GitHub Actions: actions/checkout@v6, actions/setup-node@v4'",
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      },
+      {
+        "label": "drift: agent-sdk versions",
+        "type": "shell",
+        "command": "echo '=== Agent SDK ===' && echo \"TS: $(npm view @anthropic-ai/claude-agent-sdk version 2>/dev/null || echo 'not found')\" && echo \"PY: $(uv pip show claude-agent-sdk 2>/dev/null | grep Version || echo 'not installed')\" && echo '' && echo '=== Pinned ===' && jq -r '.\"agent-sdk\" | to_entries[] | \"\\(.key): \\(.value)\"' versions.json",
+        "options": { "cwd": "${workspaceFolder:repos}/platform-manager" },
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      },
+      {
+        "label": "drift: homebrew vs Brewfile",
+        "type": "shell",
+        "command": "echo '=== Brewfile diff ===' && brew bundle check --file=Brewfile 2>&1 || true && echo '' && echo '=== outdated formulae (ecosystem) ===' && for pkg in bun gh node node@20 python@3.14 python@3.11 fnm mise pre-commit shellcheck shfmt taplo jq ripgrep claude-squad github-mcp-server slack-mcp-server neonctl gitleaks watchman; do cur=$(brew list --versions \"$pkg\" 2>/dev/null | awk '{print $NF}'); latest=$(brew info \"$pkg\" --json=v2 2>/dev/null | jq -r '.formulae[0].versions.stable // empty'); if [ -n \"$cur\" ] && [ -n \"$latest\" ] && [ \"$cur\" != \"$latest\" ]; then printf '⬆ %-25s %s → %s\\n' \"$pkg\" \"$cur\" \"$latest\"; fi; done && echo '' && echo '=== outdated casks ===' && for cask in 1password claude-devtools cursor docker-desktop ghostty iterm2 visual-studio-code; do cur=$(brew list --cask --versions \"$cask\" 2>/dev/null | awk '{print $NF}'); latest=$(brew info --cask \"$cask\" --json=v2 2>/dev/null | jq -r '.casks[0].version // empty' | cut -d, -f1); if [ -n \"$cur\" ] && [ -n \"$latest\" ] && [ \"$cur\" != \"$latest\" ]; then printf '⬆ %-25s %s → %s\\n' \"$cask\" \"$cur\" \"$latest\"; fi; done && echo '' && echo '=== versions.json cask drift ===' && jq -r '.casks | to_entries[] | \"\\(.key): \\(.value)\"' versions.json",
+        "options": { "cwd": "${workspaceFolder:repos}/platform-manager" },
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      },
+      {
+        "label": "drift: homebrew taps",
+        "type": "shell",
+        "command": "echo '=== installed taps ===' && brew tap && echo '' && echo '=== recommended (Anthropic ecosystem) ===' && echo 'oven-sh/bun — Bun runtime (claude-code-action)' && echo 'stainless-api/tap — Stainless tooling (SDK codegen)' && echo 'anthropics/tap — Anthropic formulae (currently empty)' && echo '' && echo '=== missing taps ===' && for t in oven-sh/bun stainless-api/tap; do brew tap-info \"$t\" >/dev/null 2>&1 || echo \"✗ $t not tapped\"; done",
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      },
+      {
+        "label": "integrations: health check",
+        "type": "shell",
+        "command": "bash integrations/tests/check-integrations.sh",
+        "options": { "cwd": "${workspaceFolder:repos}/platform-manager" },
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+      },
+      {
+        "label": "drift: all checks",
+        "dependsOn": [
+          "drift: runtime versions vs pins",
+          "drift: vendor commits vs upstream",
+          "drift: @anthropic-ai/* npm versions",
+          "drift: agent-sdk versions",
+          "drift: homebrew vs Brewfile"
+        ],
+        "dependsOrder": "parallel",
+        "group": "test"
+      }
+    ]
+  }
+}
