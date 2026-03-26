@@ -74,5 +74,6 @@ run_phase 03 lsp
 run_phase 04 git
 run_phase 05 shell
 run_phase 06 validate
+run_phase 07 claude-config
 
 log "Bootstrap complete."

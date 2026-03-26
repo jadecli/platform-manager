@@ -1,0 +1,102 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(pip:*)",
+      "Bash(uv:*)",
+      "Bash(cargo:*)",
+      "Bash(go:*)",
+      "Bash(brew:*)",
+      "Bash(docker:*)",
+      "Bash(make:*)",
+      "Bash(claude:*)",
+      "Bash(mise:*)",
+      "Bash(fnm:*)",
+      "Bash(jq:*)",
+      "Bash(yq:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(tar:*)",
+      "Bash(chmod:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(diff:*)",
+      "Bash(du:*)",
+      "Bash(which:*)",
+      "Bash(date:*)",
+      "Bash(basename:*)",
+      "Bash(dirname:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(find:*)",
+      "Bash(bat:*)",
+      "Bash(fd:*)",
+      "Bash(fzf:*)",
+      "Bash(shfmt:*)",
+      "Bash(shellcheck:*)",
+      "Bash(just:*)",
+      "Bash(task:*)",
+      "Bash(tokei:*)",
+      "Bash(ssh:*)",
+      "Bash(neonctl:*)",
+      "Bash(psql:*)",
+      "Bash(echo:*)",
+      "Bash(printf:*)",
+      "Bash(export:*)",
+      "Bash(source:*)",
+      "Bash(bash:*)",
+      "Bash(/bin/rm:*)",
+      "Bash(/bin/ls:*)",
+      "Bash(launchctl:*)",
+      "Bash(pkill:*)",
+      "Bash(sudo /bin/rm:*)",
+      "WebFetch(domain:anthropic.com)",
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:platform.claude.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:neon.com)",
+      "WebFetch(domain:docs.netlify.com)",
+      "Read(/private/tmp/**)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/*credentials*)",
+      "Read(**/*secret*key*)"
+    ]
+  },
+  "sandbox": {
+    "enabled": false,
+    "autoAllowBashIfSandboxed": true,
+    "network": {
+      "allowAllUnixSockets": true,
+      "allowLocalBinding": true
+    },
+    "filesystem": {
+      "denyRead": [
+        "~/.aws/credentials",
+        "~/.ssh/id_*"
+      ]
+    },
+    "excludedCommands": [
+      "git",
+      "gh",
+      "docker",
+      "brew"
+    ]
+  }
+}

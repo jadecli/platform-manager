@@ -1,0 +1,10 @@
+- Use `/clear` between unrelated tasks.
+- Delegate verbose operations (test suites, log analysis, large file reads) to subagents via `context: fork`.
+- When compacting, preserve: code samples, API signatures, test output, file paths, decisions made.
+- Discard: exploratory reads, intermediate search results, verbose tool output that led to a conclusion.
+- For research tasks, use `context: fork` + `agent: doc-researcher` to keep main context clean.
+- When context is >50%, prefer targeted reads (offset/limit) over full file reads.
+- Load lightweight identifiers upfront; pull full data just-in-time via tools. Never pre-load large datasets into context.
+- Don't rely on conversation history as source of truth — read git log, task files, and code state directly.
+- Filter/aggregate tool results in code before returning to context (programmatic tool calling pattern).
+- For long multi-feature runs (>1hr autonomous), prefer /clear (context reset) with structured handoff over compaction — resets eliminate accumulated noise; compaction preserves it.

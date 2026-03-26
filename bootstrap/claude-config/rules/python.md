@@ -1,0 +1,12 @@
+---
+paths:
+  - "**/*.py"
+---
+- Python 3.12+. Use `match` statements over long if-elif chains.
+- Type hints on all function signatures. Use `|` union syntax, not `Union[]`.
+- `pathlib.Path` over `os.path`. `tomllib` for config. `asyncio` for concurrency.
+- Pydantic `BaseModel` for structured data. `model_json_schema()` for JSON Schema generation.
+- `model_validate()` for parsing, not `__init__`. `.model_dump()` for serialization.
+- `async for message in query(...)` pattern for Agent SDK. Always check `isinstance(message, ResultMessage)`.
+- f-strings over `.format()`. Walrus operator (`:=`) when it improves readability.
+- API SDK structured outputs: `client.beta.messages.parse(output_format=PydanticModel)` — still under beta namespace. Check SDK version for GA `output_config` migration.

@@ -1,0 +1,14 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+- `const` over `let`. Arrow functions for callbacks. No `function` keyword in modules.
+- No `any` without an explicit `// eslint-disable-next-line` comment explaining why.
+- Zod for runtime validation of external inputs (API responses, user input, env vars).
+- `z.infer<typeof Schema>` for type derivation. Never duplicate Zod schemas as manual types.
+- `await using` for resources (TypeScript 5.2+). Manual `.close()` only if TS <5.2.
+- `satisfies` for type checking object literals without widening.
+- Prefer `Map`/`Set` over plain objects for dynamic keys.
+- Use `using`/`await using` with SDK sessions: `await using session = unstable_v2_createSession(...)`.
+- API SDK structured outputs: `zodOutputFormat()` from `@anthropic-ai/sdk/helpers/zod` + `client.messages.parse()`. `strict: true` on tool definitions for guaranteed schema validation.

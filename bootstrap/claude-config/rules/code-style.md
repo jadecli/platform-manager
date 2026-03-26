@@ -1,0 +1,10 @@
+- No unnecessary comments. Code is self-documenting.
+- No over-engineering. No premature abstractions. Three similar lines > one helper.
+- Edit existing files over creating new ones.
+- Smallest diff that solves the problem. Don't touch unrelated code.
+- No docstrings/type annotations on code you didn't change.
+- No backwards-compat shims, renamed _vars, or "// removed" comments.
+- Only validate at system boundaries. Trust internal code and framework guarantees.
+- Don't add error handling for impossible scenarios.
+- Don't create utils/helpers for one-time operations.
+- For multi-file features: write a feature list/spec before writing code. Work one feature at a time. Mark complete only after end-to-end verification.

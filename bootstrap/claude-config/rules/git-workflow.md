@@ -1,0 +1,6 @@
+- Imperative mood, 50-char subject line, body explains why not what.
+- One logical change per commit. Small, focused PRs.
+- Run tests before committing. If no test suite, at least lint.
+- Use `git add -p` for partial staging when a file has multiple logical changes.
+- Branch naming: `<type>/<short-description>` (e.g., `feat/add-auth`, `fix/null-check`).
+- Squash fixup commits before merge. Keep history linear when possible.
