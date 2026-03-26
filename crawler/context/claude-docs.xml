@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<crawler-context source="claude_docs" last-updated="2026-03-25">
+
+  <source>
+    <name>Claude Code Documentation</name>
+    <index-url>https://code.claude.com/docs/llms.txt</index-url>
+    <base-url>https://code.claude.com/docs/en/</base-url>
+    <page-count>84</page-count>
+    <format>HTML pages with markdown source available at .md suffix</format>
+    <update-frequency>Daily — Claude Code ships updates continuously</update-frequency>
+    <plugin>none — this is our own docs, we crawl directly</plugin>
+  </source>
+
+  <rate-limits>
+    <strategy>polite — 2s delay, 2 concurrent, AutoThrottle on</strategy>
+    <known-limits>No published rate limits. Docs are static CDN-served.</known-limits>
+    <decision id="1" date="2026-03-25">
+      Start with polite preset. Monitor for 429s. Adjust if static CDN confirms no rate limiting.
+    </decision>
+  </rate-limits>
+
+  <processing>
+    <pipeline>IndexPipeline → DiffPipeline → ChangelogPipeline</pipeline>
+    <content-extraction>CSS selector "main" for page body, "title" for title</content-extraction>
+    <hashing>SHA-256 of full body content for change detection</hashing>
+    <storage>Local JSONL + Neon pages/changelog tables</storage>
+  </processing>
+
+  <known-issues>
+    <issue id="1" date="2026-03-25" status="open">
+      llms.txt lists relative .md paths, not full URLs. Spider must construct
+      full URLs by prepending base-url. Some paths may not follow the pattern.
+    </issue>
+  </known-issues>
+
+  <decisions>
+    <decision id="1" date="2026-03-25">
+      Crawl daily via cron (crawler/schedules/daily-docs.sh). This is the primary
+      doc source for the platform-manager skill — changes here directly affect
+      our SDK directives and skill documentation.
+    </decision>
+  </decisions>
+</crawler-context>

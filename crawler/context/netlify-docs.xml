@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<crawler-context source="netlify_docs" last-updated="2026-03-25">
+
+  <source>
+    <name>Netlify Documentation</name>
+    <index-url>https://docs.netlify.com/llms.txt</index-url>
+    <base-url>https://docs.netlify.com/</base-url>
+    <page-count>78</page-count>
+    <sections>9 (development, frameworks, build, data-storage, forms, domains, team, billing, general)</sections>
+    <format>HTML (Astro/Starlight-based, dark theme, pagefind search)</format>
+    <update-frequency>Regular — Netlify ships platform updates frequently</update-frequency>
+    <plugin>netlify-skills@netlify-context-and-tools (installed)</plugin>
+    <plugin-source>https://github.com/tobinsouth/context-and-tools</plugin-source>
+    <plugin-note>
+      Author tobinsouth is an Anthropic contributor. Plugin has 12 skills covering
+      functions, edge functions, blobs, database, image CDN, forms, config, CLI,
+      frameworks, caching, AI gateway, and deployment.
+    </plugin-note>
+  </source>
+
+  <rate-limits>
+    <strategy>polite — 2s delay, 2 concurrent, AutoThrottle on</strategy>
+    <known-limits>No robots.txt found (returns HTML 200). llms.txt present = crawl-friendly.</known-limits>
+    <decision id="1" date="2026-03-25">
+      Small site (78 pages). Full crawl takes ~3 min at polite rate.
+      No reason to be aggressive. Polite is fine.
+    </decision>
+  </rate-limits>
+
+  <processing>
+    <pipeline>IndexPipeline → DiffPipeline → ChangelogPipeline</pipeline>
+    <content-extraction>CSS "main" for body, "title" for title</content-extraction>
+    <hashing>SHA-256 of main body content</hashing>
+    <storage>Local JSONL + Neon pages/changelog tables</storage>
+  </processing>
+
+  <checklist completed="2026-03-25">
+    <step status="done">Research existing tools — found netlify-skills plugin, installed</step>
+    <step status="done">Fetch and inspect llms.txt — 78 pages, 9 sections</step>
+    <step status="done">Check robots.txt — none found, llms.txt present</step>
+    <step status="done">Review rate limit docs — no published limits</step>
+    <step status="done">Create directive JSON</step>
+    <step status="pending">Validate directive</step>
+    <step status="pending">Sample crawl</step>
+    <step status="pending">Review random output</step>
+    <step status="done">Document context — this file</step>
+    <step status="pending">Full crawl</step>
+  </checklist>
+
+  <known-issues>
+    <issue id="1" date="2026-03-25" status="note">
+      No robots.txt — returns HTML instead. Astro/Starlight-based docs.
+      Content is in "main" tag. Pagefind search index also available.
+    </issue>
+  </known-issues>
+
+  <decisions>
+    <decision id="1" date="2026-03-25">
+      Installed netlify-skills plugin first (checklist step 1). The plugin provides
+      12 skills for Netlify platform features. The crawler complements this by
+      tracking doc changes over time for SDK primitive updates.
+    </decision>
+  </decisions>
+</crawler-context>

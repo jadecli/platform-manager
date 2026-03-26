@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<crawler-context source="platform_docs" last-updated="2026-03-25">
+
+  <source>
+    <name>Anthropic Platform Documentation</name>
+    <index-url>https://platform.claude.com/llms.txt</index-url>
+    <base-url>https://platform.claude.com/docs/en/</base-url>
+    <page-count>607 (English only — 11 languages available)</page-count>
+    <sections>developer-guide, api-reference (9 languages), resources, release-notes</sections>
+    <format>HTML with structured content</format>
+    <update-frequency>Frequent — API releases, SDK updates, new features</update-frequency>
+    <plugin>none for doc crawling — claude-api skill and sdk-guide agent cover usage</plugin>
+  </source>
+
+  <rate-limits>
+    <strategy>standard — 1s delay, 4 concurrent, AutoThrottle on</strategy>
+    <known-limits>No published crawl rate limits. Mintlify-served docs.</known-limits>
+    <decision id="1" date="2026-03-25">
+      Largest source (607 pages). Full crawl at standard rate takes ~15-20 min.
+      Only crawl English (/docs/en/) to avoid 7x multiplier from translations.
+    </decision>
+  </rate-limits>
+
+  <processing>
+    <pipeline>IndexPipeline → DiffPipeline → ChangelogPipeline</pipeline>
+    <content-extraction>CSS "main" for body, "title" for title. Fallback to "# " heading.</content-extraction>
+    <hashing>SHA-256 of main body content</hashing>
+    <storage>Local JSONL + Neon pages/changelog tables</storage>
+  </processing>
+
+  <known-issues>
+    <!-- None yet — document after first full crawl -->
+  </known-issues>
+
+  <decisions>
+    <decision id="1" date="2026-03-25">
+      Only crawl /docs/en/ paths. Skip /docs/de/, /docs/ja/, etc.
+      607 pages is already the largest source. Translations multiply by 11x.
+    </decision>
+    <decision id="2" date="2026-03-25">
+      API reference pages (400+) have repetitive structure across 9 languages.
+      Consider adding a "section" filter to crawl only developer-guide + agent-sdk
+      for the first pass, then expand.
+    </decision>
+  </decisions>
+</crawler-context>

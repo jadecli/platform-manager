@@ -1,0 +1,22 @@
+{
+  "name": "netlify-docs",
+  "description": "Crawls docs.netlify.com/llms.txt — 78 pages across 9 sections. Netlify platform docs.",
+  "type": "crawl",
+  "allowedDomains": ["docs.netlify.com"],
+  "startUrls": ["https://docs.netlify.com/llms.txt"],
+  "fields": [
+    {"name": "title", "selector": {"type": "css", "query": "title", "extract": "first"}, "type": "str", "required": true},
+    {"name": "content", "selector": {"type": "css", "query": "main", "extract": "first"}, "type": "str"}
+  ],
+  "rateLimit": {
+    "downloadDelay": 2,
+    "concurrentRequests": 2,
+    "concurrentRequestsPerDomain": 2,
+    "autoThrottle": true,
+    "autoThrottleTargetConcurrency": 1.0,
+    "autoThrottleMaxDelay": 30,
+    "randomizeDelay": true
+  },
+  "output": {"format": "jsonl", "path": "output/netlify-docs-%(time)s.jsonl"},
+  "tags": ["docs", "netlify", "deployment", "sdk-context"]
+}

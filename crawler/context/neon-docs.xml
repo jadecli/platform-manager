@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<crawler-context source="neon_docs" last-updated="2026-03-25">
+
+  <source>
+    <name>Neon Postgres Documentation</name>
+    <index-url>https://neon.com/llms.txt</index-url>
+    <base-url>https://neon.com/docs/</base-url>
+    <page-count>244</page-count>
+    <sections>17 (introduction, get-started, connect, local, cli, ai, auth, data-api, branching, manage, guides, import, workflows, reference, postgresql, security, extensions)</sections>
+    <format>Markdown available at .md suffix per page</format>
+    <update-frequency>Weekly — Neon releases features on a regular cadence</update-frequency>
+    <plugin>neon-postgres@neon (installed) — provides CLI and DB tools but not doc crawling</plugin>
+    <api-spec>https://neon.com/api_spec/release/v2.json (OpenAPI 3.0)</api-spec>
+  </source>
+
+  <rate-limits>
+    <strategy>standard — 1.5s delay, 3 concurrent, AutoThrottle on</strategy>
+    <known-limits>No published crawl rate limits. Docs are Vercel/CDN-served.</known-limits>
+    <decision id="1" date="2026-03-25">
+      Slightly more conservative than claude-docs because larger page count (244 vs 84).
+      Full crawl takes ~6 min at standard rate. Sample crawl first.
+    </decision>
+  </rate-limits>
+
+  <processing>
+    <pipeline>IndexPipeline → DiffPipeline → ChangelogPipeline</pipeline>
+    <content-extraction>Fetch .md suffix → extract title from first "# " line</content-extraction>
+    <hashing>SHA-256 of markdown content</hashing>
+    <storage>Local JSONL + Neon pages/changelog tables</storage>
+  </processing>
+
+  <known-issues>
+    <!-- None yet — document after first full crawl -->
+  </known-issues>
+
+  <decisions>
+    <decision id="1" date="2026-03-25">
+      Neon docs inform our SDK primitives for Neon Postgres integration.
+      Each of our 18 repos has a Neon database — understanding the docs
+      is critical for branch-per-PR workflows and neonctl usage.
+    </decision>
+    <decision id="2" date="2026-03-25">
+      We already have the neon-postgres plugin installed. The crawler complements
+      this by tracking doc changes that affect our SDK primitives over time.
+    </decision>
+  </decisions>
+</crawler-context>
