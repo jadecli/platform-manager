@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<audits generated="2026-03-26" repo="/Users/alexzh/platform-manager">
+
+  <!-- ================================================================
+       AUDIT 1: HOOKS
+       Doc source : https://code.claude.com/docs/en/hooks-guide
+       Files read :
+         bootstrap/claude-config/settings.json          (primary hook registry)
+         hooks/hooks.json                                (plugin/ecosystem hooks)
+         bootstrap/claude-config/hooks/*.sh              (9 scripts)
+       ================================================================ -->
+  <audit source="https://code.claude.com/docs/en/hooks-guide" date="2026-03-26">
+
+    <aligned>
+      <!-- Events wired in settings.json with real scripts -->
+      - SessionStart: two entries — blank matcher (session-start.sh, injects PATH/mise/fnm/venv via CLAUDE_ENV_FILE, emits git context) and "compact" matcher (inline git log reinject). Matches docs' recommended compact-reinject pattern exactly.
+      - PreCompact: wired to pre-compact.sh, logs trigger + session_id to compaction.log. Correct event name and structure.
+      - PostCompact: wired to post-compact.sh, logs + bell alert. Correct event name.
+      - WorktreeCreate + WorktreeRemove: both wired to worktree-lifecycle.sh, which dispatches on hook_event_name — correct dual-event pattern.
+      - StopFailure: wired to stop-failure.sh, logs error and fires osascript notification with sanitised error string.
+      - SessionEnd: wired to session-lifecycle.sh, logs session_id + cwd.
+      - Notification: wired with "idle_prompt" matcher for osascript desktop notification.
+      - ConfigChange: wired to config-change.sh, appends tab-separated audit rows to config-audit.log.
+      - PermissionRequest: wired with "ExitPlanMode" matcher, returns structured allow JSON — matches docs example verbatim.
+      - Stop: wired to stop.sh, logs turn completions.
+      - PostToolUse: wired to post-tool-use-file-audit.sh with "Edit|Write" matcher — logs all file mutations. Matches docs auto-format pattern (different purpose, same structure).
+      - hooks/hooks.json (plugin scope): SessionStart, PreToolUse (Read|Edit|Write|Bash → access-guard.sh), CwdChanged (→ session-init.sh) — correct use of CwdChanged for environment reload as documented.
+      - Hook scripts all use stdin-read pattern (INPUT=$(cat)) and jq for JSON parsing — matches docs guidance.
+      - stop.sh does NOT have stop_hook_active guard, but it only logs (exit 0 unconditionally) so it cannot create an infinite loop — safe in current form.
+      - ConfigChange matcher left blank (fires on all config source types) — valid per docs.
+      - Hook scripts use stderr for messages where blocking would be relevant (worktree-lifecycle.sh pattern is correct).
+      - settings.json uses disableAllHooks-compatible structure (hooks block at root).
+    </aligned>
+
+    <gaps>
+      <!-- Events listed in docs but absent from both settings.json and hooks/hooks.json -->
+
+      1. UserPromptSubmit — not wired. Fires before Claude processes a prompt. Useful for injecting additionalContext (audit log of all prompts, rate-limit guard, prompt prefix injection).
+
+      2. PostToolUseFailure — not wired. Fires after a tool call fails. Currently failures are only captured via StopFailure (API-level). Tool-level failures (e.g. failed Bash command, bad file path) go unlogged.
+
+      3. SubagentStart — not wired. CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is enabled in env, making this relevant. No logging or control of subagent spawning.
+
+      4. SubagentStop — not wired. Companion to SubagentStart. No post-subagent audit.
+
+      5. TeammateIdle — not wired. Relevant because agent teams are enabled (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1). Fires when a teammate is about to go idle; useful for reassigning work or notifying.
+
+      6. TaskCompleted — not wired. CLAUDE_CODE_ENABLE_TASKS=true is set. No hook fires when a task completes.
+
+      7. InstructionsLoaded — not wired. Fires when CLAUDE.md or rules/*.md files are loaded. Could be used to validate or log which instruction sets are active.
+
+      8. FileChanged — not wired. No watched-file hooks for .envrc, .env, or config files. The CwdChanged hook calls session-init.sh but FileChanged would allow finer-grained env reload without a full directory change.
+
+      9. Elicitation / ElicitationResult — not wired. No MCP elicitation handling. If MCP servers (neon-postgres, pyright-lsp, netlify-skills) ever request user input mid-call, no hook intercepts or logs it.
+
+      10. hooks/hooks.json "TaskCreated" event — this event does NOT exist in the docs event table. The valid event for task lifecycle is TaskCompleted, not TaskCreated. This hook will silently never fire.
+
+      11. No hook uses type "prompt" (LLM-evaluated) or type "agent" (subagent with tools) — both documented hook types are unused. Prompt hooks on Stop would enable automatic task-completion verification.
+
+      12. No hook uses type "http" — documented for team audit services and external webhooks. Given INTEGRATIONS.md describes a Slack/CI notification architecture, HTTP hooks could replace the shell notify.sh pattern.
+
+      13. Notification hook only covers "idle_prompt" matcher — docs list additional notification types: "permission_prompt", "auth_success", "elicitation_dialog". These fire different events and would benefit from distinct notifications or logging.
+
+      14. StopFailure matcher left blank (fires on all error types) but stop-failure.sh sends a generic notification for all errors. Docs list specific matchers: rate_limit, authentication_failed, billing_error, invalid_request, server_error, max_output_tokens, unknown. Different handling per error type (e.g. rate_limit → backoff hint; billing_error → urgent alert) is not implemented.
+
+      15. PreToolUse hook (access-guard.sh) in hooks.json: the script path is hardcoded to /Users/alexzh/jadecli-ecosystem/scripts/access-guard.sh — not using $CLAUDE_PROJECT_DIR as docs recommend. Portability gap.
+
+      16. SessionStart matcher "compact" (inline inline git log) duplicates logic already in session-start.sh (which also outputs git context). Two hooks for the same event/purpose risk double-injection on compact resume.
+    </gaps>
+
+    <actions>
+      1. ADD PostToolUseFailure hook to settings.json:
+         Create bootstrap/claude-config/hooks/post-tool-use-failure.sh
+         — Log tool_name + error to ~/.claude/logs/tool-failures.log
+         — Wire in settings.json under PostToolUseFailure with matcher ""
+
+      2. ADD UserPromptSubmit hook to settings.json:
+         Create bootstrap/claude-config/hooks/user-prompt-submit.sh
+         — Append prompt hash + session_id to ~/.claude/logs/prompt-audit.log (no full text for privacy)
+         — Wire with matcher "" and type "command"
+
+      3. ADD SubagentStart + SubagentStop hooks to settings.json:
+         Create bootstrap/claude-config/hooks/subagent-lifecycle.sh (dispatch on hook_event_name like worktree-lifecycle.sh)
+         — Log agent type + session_id
+         — Wire both events to the same script
+
+      4. ADD TaskCompleted hook to settings.json:
+         Create bootstrap/claude-config/hooks/task-completed.sh
+         — Log task subject/id to ~/.claude/logs/tasks.log
+         — Optionally fire osascript notification
+
+      5. FIX hooks/hooks.json: rename "TaskCreated" to "TaskCompleted" (or remove if TaskCompleted hook above covers it). TaskCreated does not exist in the documented event schema and will never fire.
+
+      6. ADD FileChanged hook to settings.json for env reload:
+         { "matcher": ".envrc|.env", "hooks": [{ "type": "command", "command": "direnv export bash >> \"$CLAUDE_ENV_FILE\"" }] }
+         This is a verbatim doc example and complements the existing CwdChanged hook.
+
+      7. REVIEW SessionStart duplicate: either remove the inline "compact" matcher entry from settings.json (since session-start.sh already emits git context and will fire on all SessionStart including compact) or guard session-start.sh with a source check to avoid double-injection.
+
+      8. FIX hooks/hooks.json hardcoded path: replace /Users/alexzh/jadecli-ecosystem with $CLAUDE_PROJECT_DIR or a relative reference.
+
+      9. CONSIDER adding Notification coverage for "permission_prompt" and "auth_success" matchers with distinct osascript subtitles so permission prompts are distinguishable from idle alerts.
+
+      10. CONSIDER a Stop hook with type "prompt" for task-completion verification as shown in the docs — low cost (Haiku), high value for unattended runs.
+    </actions>
+
+  </audit>
+
+
+  <!-- ================================================================
+       AUDIT 2: CHANNELS
+       Doc source : https://code.claude.com/docs/en/channels
+       Files read :
+         bootstrap/managed-settings.d/10-jadecli-channels.json
+         integrations/INTEGRATIONS.md
+       ================================================================ -->
+  <audit source="https://code.claude.com/docs/en/channels" date="2026-03-26">
+
+    <aligned>
+      - INTEGRATIONS.md documents all four channel types covered by docs: iMessage, Telegram, Discord, and custom webhook. Architecture matches the docs channel model (MCP servers pushing events into running sessions).
+      - INTEGRATIONS.md correctly documents the permission relay feature (v2.1.81+) with the "Reply yes/no &lt;id&gt;" syntax — aligns with docs' relay-permission-prompts capability.
+      - INTEGRATIONS.md references --channels flag and the plugin install flow (/plugin install telegram@claude-plugins-official).
+      - INTEGRATIONS.md correctly places managed settings reference at 10-jadecli-channels.json.
+      - INTEGRATIONS.md documents Remote Control as a separate mechanism (distinct from channels), matching the docs' "How channels compare" table.
+      - The managed-settings.d/ layering pattern (00-, 10-, 20- prefixed files) is correct for policy settings scope as described in docs.
+    </aligned>
+
+    <gaps>
+      1. CRITICAL: 10-jadecli-channels.json contains:
+            { "$schema": "...", "allowedChannelPlugins": [] }
+         An empty array for allowedChannelPlugins BLOCKS ALL channel plugins per the docs:
+         "When allowedChannelPlugins is set, it replaces the Anthropic allowlist entirely: only the listed plugins can register."
+         The channels documented in INTEGRATIONS.md (telegram, discord, imessage) are therefore blocked by this policy file. This is likely unintentional — either the array should list the approved plugins or the key should be omitted to fall back to the Anthropic default allowlist.
+
+      2. channelsEnabled is absent from 10-jadecli-channels.json. Docs state:
+         "On Team and Enterprise plans, channels are off by default... must be true for any channel to deliver messages."
+         Without channelsEnabled: true, all channels are blocked regardless of allowedChannelPlugins.
+
+      3. No evidence of --channels flag usage in any startup script, Makefile, or CI config in the repo. INTEGRATIONS.md describes channel capabilities but no launcher script sets up --channels at startup for persistent background use.
+
+      4. No fakechat plugin is listed or documented for local development/testing. Docs recommend fakechat as a development channel; absent from INTEGRATIONS.md.
+
+      5. Custom webhook channel is mentioned in INTEGRATIONS.md ("Custom webhook | Any | GitHub/CI events → session") but no implementation exists — no plugin source, no webhook receiver script, no reference to channels-reference doc for building one.
+
+      6. iMessage channel: INTEGRATIONS.md says "Agent → human notification" but does not document the Full Disk Access requirement (System Settings → Privacy & Security → Full Disk Access) which the docs flag as required and a common failure point.
+
+      7. No pairing workflow documented in INTEGRATIONS.md for Telegram and Discord. Docs require explicit pairing (/telegram:access pair &lt;code&gt;) and policy lock (/telegram:access policy allowlist). These steps are absent from the setup documentation.
+
+      8. settings.json does not list fakechat, telegram, discord, or imessage in enabledPlugins — channels must be installed as plugins first. No /plugin install steps are scripted in bootstrap.
+    </gaps>
+
+    <actions>
+      1. FIX IMMEDIATELY: Update bootstrap/managed-settings.d/10-jadecli-channels.json to:
+         {
+           "$schema": "https://json.schemastore.org/claude-code-settings.json",
+           "channelsEnabled": true,
+           "allowedChannelPlugins": [
+             { "marketplace": "claude-plugins-official", "plugin": "telegram" },
+             { "marketplace": "claude-plugins-official", "plugin": "discord" },
+             { "marketplace": "claude-plugins-official", "plugin": "imessage" }
+           ]
+         }
+         This unblocks channels while restricting to only the three approved plugins.
+
+      2. ADD a channel launch script (e.g. bootstrap/scripts/start-with-channels.sh):
+         claude --channels plugin:telegram@claude-plugins-official plugin:discord@claude-plugins-official plugin:imessage@claude-plugins-official
+         Document this in INTEGRATIONS.md as the canonical startup command.
+
+      3. ADD plugin install steps to bootstrap sequence or a setup script:
+         /plugin install telegram@claude-plugins-official
+         /plugin install discord@claude-plugins-official
+         /plugin install imessage@claude-plugins-official
+         (Or document them in INTEGRATIONS.md step-by-step setup sections.)
+
+      4. ADD pairing instructions for Telegram and Discord to INTEGRATIONS.md:
+         Step: DM bot → receive code → run /telegram:access pair &lt;code&gt; → run /telegram:access policy allowlist
+
+      5. ADD iMessage Full Disk Access prerequisite to INTEGRATIONS.md:
+         System Settings → Privacy &amp; Security → Full Disk Access → add Terminal/iTerm
+
+      6. ADD fakechat to INTEGRATIONS.md as the local dev/test channel with install + usage steps.
+
+      7. DECIDE on custom webhook: either link to channels-reference build guide or remove from INTEGRATIONS.md if not yet implemented.
+    </actions>
+
+  </audit>
+
+
+  <!-- ================================================================
+       AUDIT 3: SCHEDULED TASKS
+       Doc source : https://code.claude.com/docs/en/scheduled-tasks
+       Files read :
+         integrations/DEVOPS-ALIGNMENT.md (Scheduled Runs section)
+       ================================================================ -->
+  <audit source="https://code.claude.com/docs/en/scheduled-tasks" date="2026-03-26">
+
+    <aligned>
+      - DEVOPS-ALIGNMENT.md Scheduled Runs section documents a three-tier scheduling approach that maps to the docs' scheduling options table:
+          • Session-scoped (docs: /loop) → implied by SessionStart hook rate-limiting
+          • Local machine persistent (docs: Desktop tasks) → described as "Dispatch task from Claude Desktop/Mobile"
+          • Cloud/unattended (docs: Cloud tasks) → "Cowork Scheduled Tasks" with Anthropic-managed cloud
+      - The cron expressions in DEVOPS-ALIGNMENT.md ("0 9 * * *", "0 10 * * 1") are valid 5-field standard cron syntax matching the docs' CronCreate format.
+      - DEVOPS-ALIGNMENT.md documents the correct use case split: cloud tasks for unattended work, desktop/dispatch for local-file tasks — matches docs' tip ("Use cloud tasks for work that should run reliably without your machine. Use Desktop tasks when you need access to local files").
+      - The --print flag usage in example cron invocations is consistent with headless/non-interactive scheduling patterns.
+    </aligned>
+
+    <gaps>
+      1. DEVOPS-ALIGNMENT.md references "claude --cron" as a CLI flag:
+            claude --cron "0 9 * * *" --print "crawl..."
+         This flag does NOT appear in the scheduled-tasks docs. The native scheduling mechanism documented is /loop (the bundled skill) and the underlying CronCreate/CronList/CronDelete tools — both session-scoped. "claude --cron" may be a non-existent or undocumented flag. Needs verification.
+
+      2. DEVOPS-ALIGNMENT.md references "Cowork scheduled tasks":
+            claude cowork --scheduled "daily 9am" "Run plugin ecosystem crawl..."
+         The docs do not document a "cowork" subcommand. The docs refer to "Cloud scheduled tasks" (web-scheduled-tasks) and "Desktop scheduled tasks". "Cowork" is not a documented interface. This may be a misremembered or speculative command.
+
+      3. DEVOPS-ALIGNMENT.md references "Dispatch task from Claude Desktop/Mobile" as a scheduling primitive. The docs describe this under "Desktop scheduled tasks" (via Desktop app UI) but DEVOPS-ALIGNMENT.md frames it as a push mechanism ("Send a task to a running local session from your phone"). The actual Desktop scheduling feature (persistent, survives restarts, configurable interval) is not addressed.
+
+      4. No /loop usage is documented anywhere in the repo. The docs feature /loop as the primary in-session scheduling primitive with full syntax (e.g. /loop 5m check if deployment finished). DEVOPS-ALIGNMENT.md does not mention /loop at all.
+
+      5. No CLAUDE_CODE_DISABLE_CRON=1 escape hatch is documented. If the scheduler causes interference during a session, there is no documented way to disable it.
+
+      6. Three-day expiry of recurring tasks (documented: recurring tasks auto-expire after 3 days) is not addressed in DEVOPS-ALIGNMENT.md. Tasks that should run longer than 3 days need to be implemented as Desktop or Cloud tasks, not session-scoped ones.
+
+      7. No actual scheduled task definitions exist in the repo — DEVOPS-ALIGNMENT.md describes intent and example commands but no implementation scripts, Desktop task configs, or Cloud task definitions are present.
+
+      8. The docs distinguish minimum intervals: Cloud tasks = 1 hour minimum, Desktop/loop = 1 minute minimum. DEVOPS-ALIGNMENT.md schedules "daily" and "weekly" which are both above Cloud minimum, but "Per session (1x/day)" for config drift check is implemented via SessionStart hook rate-limiting rather than any scheduling primitive — this is architecturally correct but not using the scheduler at all.
+    </gaps>
+
+    <actions>
+      1. VERIFY/FIX "claude --cron" flag: check claude --help output for a --cron flag. If it does not exist, replace the DEVOPS-ALIGNMENT.md examples with the correct /loop syntax or GitHub Actions schedule trigger.
+         Correct in-session syntax: use /loop inside a session, e.g.:
+           /loop 1d crawl code.claude.com/docs and report changes
+
+      2. VERIFY/FIX "claude cowork --scheduled": check whether cowork is a real subcommand. If not, replace with the documented alternatives:
+         - Cloud: use the Cloud scheduled tasks UI at claude.ai
+         - Local: use Desktop scheduled tasks via Claude Desktop app
+         - CI: use GitHub Actions schedule trigger (already partially documented in DEVOPS-ALIGNMENT.md)
+
+      3. ADD /loop examples to DEVOPS-ALIGNMENT.md for session-scoped polling tasks:
+         /loop 5m check if the deployment finished and tell me what happened
+         /loop 20m review any new PRs opened since last check
+
+      4. ADD note on three-day expiry: "Session-scoped /loop tasks expire after 72 hours. For persistent recurring tasks use Desktop or Cloud scheduled tasks."
+
+      5. ADD CLAUDE_CODE_DISABLE_CRON=1 to the env vars reference in settings.json or a .env.example file so operators can disable the scheduler when needed.
+
+      6. CONSIDER implementing concrete scheduled task definitions:
+         - A GitHub Actions workflow with schedule trigger for the daily doc crawl (replaces the speculative claude --cron command)
+         - A Desktop task config for weekly MCP registry sync
+         Both are more reliable than session-scoped tasks for the use cases described.
+
+      7. CLARIFY "Dispatch" entry in the table: rename to "Desktop scheduled tasks" and link to the Desktop docs. Add that these are persistent (survive restarts) and have 1-minute minimum interval.
+    </actions>
+
+  </audit>
+
+</audits>
