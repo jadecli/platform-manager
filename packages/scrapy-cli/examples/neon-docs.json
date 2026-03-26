@@ -1,0 +1,23 @@
+{
+  "name": "neon-docs",
+  "description": "Crawls neon.com/llms.txt — 244 pages across 17 sections. Neon Postgres documentation for SDK primitives.",
+  "type": "crawl",
+  "allowedDomains": ["neon.com"],
+  "startUrls": ["https://neon.com/llms.txt"],
+  "fields": [
+    {"name": "title", "selector": {"type": "regex", "query": "^# (.+)$", "re": "^# (.+)$"}, "type": "str", "required": true},
+    {"name": "content", "selector": {"type": "css", "query": "body", "extract": "first"}, "type": "str"},
+    {"name": "section", "selector": {"type": "regex", "query": "/docs/([^/]+)/", "re": "/docs/([^/]+)/"}, "type": "str"}
+  ],
+  "rateLimit": {
+    "downloadDelay": 1.5,
+    "concurrentRequests": 3,
+    "concurrentRequestsPerDomain": 3,
+    "autoThrottle": true,
+    "autoThrottleTargetConcurrency": 2.0,
+    "autoThrottleMaxDelay": 30,
+    "randomizeDelay": true
+  },
+  "output": {"format": "jsonl", "path": "output/neon-docs-%(time)s.jsonl"},
+  "tags": ["docs", "neon", "postgres", "sdk-context"]
+}

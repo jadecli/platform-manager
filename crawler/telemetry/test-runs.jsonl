@@ -1,0 +1,3 @@
+{"spider": "claude_docs", "test_run": true, "items": 1, "max_pages": 5, "errors": 0, "domains": ["code.claude.com"], "timestamp": "2026-03-26T00:22:38.189257+00:00"}
+{"spider": "neon_docs", "test_run": true, "items": 1, "max_pages": 5, "errors": 0, "domains": ["neon.com"], "timestamp": "2026-03-26T00:22:55.031350+00:00"}
+{"spider": "platform_docs", "test_run": true, "items": 1, "max_pages": 5, "errors": 0, "domains": ["platform.claude.com"], "timestamp": "2026-03-26T00:23:07.569859+00:00"}

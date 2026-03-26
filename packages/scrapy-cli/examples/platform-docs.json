@@ -1,0 +1,23 @@
+{
+  "name": "platform-docs",
+  "description": "Crawls platform.claude.com/llms.txt — 607 pages. Anthropic API docs, Agent SDK, tool use.",
+  "type": "crawl",
+  "allowedDomains": ["platform.claude.com"],
+  "startUrls": ["https://platform.claude.com/llms.txt"],
+  "fields": [
+    {"name": "title", "selector": {"type": "css", "query": "title", "extract": "first"}, "type": "str", "required": true},
+    {"name": "content", "selector": {"type": "css", "query": "main", "extract": "first"}, "type": "str"},
+    {"name": "section", "selector": {"type": "regex", "query": "/docs/en/([^/]+)/", "re": "/docs/en/([^/]+)/"}, "type": "str"}
+  ],
+  "rateLimit": {
+    "downloadDelay": 1.0,
+    "concurrentRequests": 4,
+    "concurrentRequestsPerDomain": 4,
+    "autoThrottle": true,
+    "autoThrottleTargetConcurrency": 2.0,
+    "autoThrottleMaxDelay": 30,
+    "randomizeDelay": true
+  },
+  "output": {"format": "jsonl", "path": "output/platform-docs-%(time)s.jsonl"},
+  "tags": ["docs", "anthropic", "api", "sdk-context"]
+}

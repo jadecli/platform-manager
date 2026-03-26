@@ -39,6 +39,11 @@ FEEDS = {
     },
 }
 
+# Telemetry extension — writes crawl stats to crawler/telemetry/crawl-stats.jsonl
+EXTENSIONS = {
+    "crawler.telemetry.stats_collector.TelemetryExtension": 500,
+}
+
 # Logging
 LOG_LEVEL = "INFO"
 LOG_FORMAT = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
