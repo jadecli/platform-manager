@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<crawler-context source="claude-plugin-ecosystem" created="2026-03-26">
+  <!--
+    Crawl strategy for 660 Claude plugins across 4 marketplaces.
+    Each marketplace has a marketplace.json with SHA-pinned plugin entries.
+    Goal: index all plugins, crawl their source repos, extract metadata.
+  -->
+
+  <sources count="4">
+    <source id="community" repo="anthropics/claude-plugins-community" plugins="500"
+            type="Third-party, Anthropic-reviewed"/>
+    <source id="official" repo="anthropics/claude-plugins-official" plugins="119"
+            type="Anthropic-maintained"/>
+    <source id="knowledge-work" repo="anthropics/knowledge-work-plugins" plugins="38"
+            type="Role-specific knowledge work"/>
+    <source id="skills" repo="anthropics/skills" plugins="3"
+            type="Document/example skills"/>
+  </sources>
+
+  <plugin-schema>
+    <!--
+      Each plugin entry in marketplace.json:
+      {
+        "name": "plugin-name",
+        "description": "what it does",
+        "source": {
+          "source": "url" | "git-subdir",
+          "url": "org/repo" or "https://github.com/org/repo.git",
+          "path": "plugins/subdir" (if git-subdir),
+          "ref": "main",
+          "sha": "abc123..."
+        },
+        "homepage": "https://..."
+      }
+
+      440 use source: "url" (standalone repos)
+      59 use source: "git-subdir" (monorepo pattern)
+      1 uses string source (cowork-plugin-management, internal)
+    -->
+  </plugin-schema>
+
+  <crawl-strategy>
+    <!--
+      Two-phase crawl:
+      Phase 1: Index — fetch marketplace.json from all 4 sources, parse into dim_plugin
+      Phase 2: Deep — for each plugin, clone source repo at pinned SHA, extract:
+        - plugin.json (manifest)
+        - SKILL.md files
+        - hooks.json
+        - README.md
+        - Tool definitions (MCP tools, skills, commands)
+        - Dependencies (package.json, pyproject.toml)
+
+      Rate limits:
+        - GitHub API: 5000 req/hr (authenticated)
+        - Clone: use shallow clone (--depth 1) at pinned SHA
+        - Batch: process in chunks of 50 plugins
+        - Cache: Neon-backed, keyed on sha — skip if already crawled
+    -->
+  </crawl-strategy>
+
+  <keyword-distribution note="from 500 community plugins">
+    <keyword name="agent" count="122"/>
+    <keyword name="mcp" count="72"/>
+    <keyword name="workflow" count="63"/>
+    <keyword name="api" count="60"/>
+    <keyword name="test" count="55"/>
+    <keyword name="git" count="34"/>
+    <keyword name="security" count="33"/>
+    <keyword name="auth" count="28"/>
+    <keyword name="python" count="27"/>
+    <keyword name="deploy" count="24"/>
+    <keyword name="prompt" count="23"/>
+    <keyword name="code review" count="21"/>
+    <keyword name="github" count="15"/>
+    <keyword name="database" count="15"/>
+    <keyword name="react" count="12"/>
+    <keyword name="rust" count="11"/>
+  </keyword-distribution>
+</crawler-context>
