@@ -2,12 +2,13 @@ import { z } from "zod";
 import { Platform, Arch, ToolchainEntry, RuntimeVersion } from "../primitives/platform.js";
 
 export const BootstrapPhase = z.enum([
-  "runtime",    // 01: Node, Python, Rust, uv
-  "claude",     // 02: Claude Code CLI + auth + plugins
-  "lsp",        // 03: Language servers
-  "git",        // 04: Git config, SSH, signing
-  "shell",      // 05: Zsh, antidote, starship
-  "validate",   // 06: Version verification
+  "runtime",       // 01: Node, Python, Rust, uv
+  "claude",        // 02: Claude Code CLI + auth + plugins
+  "lsp",           // 03: Language servers
+  "git",           // 04: Git config, SSH, signing
+  "shell",         // 05: Zsh, antidote, starship
+  "validate",      // 06: Version verification
+  "claude-config", // 07: Deploy ~/.claude/ config from repo
 ]);
 
 export const BootstrapDirective = z.object({
@@ -23,7 +24,7 @@ export const BootstrapDirective = z.object({
 
   /** Phases to run (default: all) */
   phases: z.array(BootstrapPhase).default([
-    "runtime", "claude", "lsp", "git", "shell", "validate",
+    "runtime", "claude", "lsp", "git", "shell", "validate", "claude-config",
   ]),
 
   /** Claude Code version to install */

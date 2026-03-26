@@ -19,19 +19,19 @@ SECONDARY="$HOME/$CONFIG_NAME"
 # Nuke and rebuild — avoids stale files from previous runs
 if [[ -d "$SECONDARY" ]]; then
   # Preserve auth credentials and session history
-  for keep in sessions; do
-    [[ -d "$SECONDARY/$keep" && ! -L "$SECONDARY/$keep" ]] && \
-      /bin/mv "$SECONDARY/$keep" "/tmp/claude-keep-$keep-$$" 2>/dev/null || true
+  for keep in sessions credentials.json .credentials.json; do
+    [[ -e "$SECONDARY/$keep" && ! -L "$SECONDARY/$keep" ]] && \
+      /bin/mv "$SECONDARY/$keep" "/tmp/claude-keep-${keep//\//-}-$$" 2>/dev/null || true
   done
   /bin/rm -rf "$SECONDARY"
 fi
 
 mkdir -p "$SECONDARY"
 
-# Restore preserved dirs
-for keep in sessions; do
-  [[ -d "/tmp/claude-keep-$keep-$$" ]] && \
-    /bin/mv "/tmp/claude-keep-$keep-$$" "$SECONDARY/$keep" 2>/dev/null || true
+# Restore preserved items
+for keep in sessions credentials.json .credentials.json; do
+  src="/tmp/claude-keep-${keep//\//-}-$$"
+  [[ -e "$src" ]] && /bin/mv "$src" "$SECONDARY/$keep" 2>/dev/null || true
 done
 
 # Symlink shared config

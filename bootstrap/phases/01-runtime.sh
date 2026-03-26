@@ -18,7 +18,7 @@ if [[ "$PLATFORM" == "darwin" ]]; then
   brew list jq &>/dev/null || { $DRY_RUN || brew install jq; }
 elif [[ "$PLATFORM" == "linux" ]]; then
   if ! command -v jq &>/dev/null; then
-    sudo apt-get update -qq && sudo apt-get install -y -qq jq curl git
+    $DRY_RUN || { sudo apt-get update -qq && sudo apt-get install -y -qq jq curl git; }
   fi
 fi
 
@@ -65,8 +65,8 @@ fi
 
 CURRENT_RUST=$(rustc --version 2>/dev/null | awk '{print $2}' || echo "none")
 if [[ "$CURRENT_RUST" != "$RUST_VER" ]]; then
-  echo "Updating Rust to $RUST_VER (current: $CURRENT_RUST)..."
-  $DRY_RUN || rustup update stable
+  echo "Installing Rust $RUST_VER (current: $CURRENT_RUST)..."
+  $DRY_RUN || { rustup install "$RUST_VER"; rustup default "$RUST_VER"; }
 fi
 
 # --- uv (Python package manager) ---
@@ -77,8 +77,8 @@ fi
 
 CURRENT_UV=$(uv --version 2>/dev/null | awk '{print $2}' || echo "none")
 if [[ "$CURRENT_UV" != "$UV_VER" ]]; then
-  echo "Updating uv to $UV_VER (current: $CURRENT_UV)..."
-  $DRY_RUN || uv self update
+  echo "Installing uv $UV_VER (current: $CURRENT_UV)..."
+  $DRY_RUN || curl -LsSf "https://astral.sh/uv/${UV_VER}/install.sh" | sh
 fi
 
 echo "  Node:   $(node --version 2>/dev/null || echo 'not installed')"
