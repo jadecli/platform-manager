@@ -33,3 +33,21 @@ if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
   fi
   echo "export SESSION_START_UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$CLAUDE_ENV_FILE"
 fi
+
+# Compact recent-changes context for the session (avoids token bloat)
+# Format: "SessionStart:compact hook success: <context>"
+# Claude sees this as a system-reminder — no need to read git log manually.
+if [[ -n "$CWD" ]] && git -C "$CWD" rev-parse --git-dir &>/dev/null; then
+  BRANCH=$(git -C "$CWD" symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+  # Last 5 commits, subject only, one line each — ~200 tokens max
+  RECENT=$(git -C "$CWD" log --oneline -5 --no-decorate 2>/dev/null | head -5)
+  MODIFIED=$(git -C "$CWD" diff --name-only HEAD~3..HEAD 2>/dev/null | head -10 | tr '\n' ', ' | sed 's/,$//')
+  cat <<EOF
+Post-compaction context refresh:
+Git branch: ${BRANCH}
+Recent commits:
+${RECENT}
+Modified files:
+${MODIFIED}
+EOF
+fi
