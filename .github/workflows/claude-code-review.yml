@@ -75,3 +75,21 @@ jobs:
             Render verdict: REJECT, REVISE, or APPROVE with justification.
           claude_args: "--max-turns 15 --max-budget-usd 5 --model claude-opus-4-6"
           trigger_phrase: "@claude"
+
+      - name: Notify on review complete
+        if: always() && github.event_name == 'pull_request' && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          PR="#${{ github.event.pull_request.number }}"
+          TITLE="${{ github.event.pull_request.title }}"
+          URL="${{ github.event.pull_request.html_url }}"
+          STATUS="${{ job.status }}"
+          if [[ "$STATUS" == "success" ]]; then
+            TEXT=":brain: *Claude reviewed PR ${PR}* — review complete\n<${URL}|${TITLE}>\n_Check review comments, merge if approved_"
+          else
+            TEXT=":warning: *Claude review failed* on PR ${PR}\n<${URL}|${TITLE}>"
+          fi
+          curl -sS -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\": \"${TEXT}\"}"

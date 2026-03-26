@@ -1,0 +1,78 @@
+name: PR Notifications
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+
+    steps:
+      - name: Determine event type
+        id: event
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "type=pr_created" >> "$GITHUB_OUTPUT"
+            echo "title=${{ github.event.pull_request.title }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ github.event.pull_request.html_url }}" >> "$GITHUB_OUTPUT"
+            echo "author=${{ github.event.pull_request.user.login }}" >> "$GITHUB_OUTPUT"
+            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "pull_request_review" ]]; then
+            echo "type=review_${{ github.event.review.state }}" >> "$GITHUB_OUTPUT"
+            echo "title=${{ github.event.pull_request.title }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ github.event.pull_request.html_url }}" >> "$GITHUB_OUTPUT"
+            echo "author=${{ github.event.review.user.login }}" >> "$GITHUB_OUTPUT"
+            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "check_suite" ]]; then
+            echo "type=checks_${{ github.event.check_suite.conclusion }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ github.event.check_suite.url }}" >> "$GITHUB_OUTPUT"
+            BRANCH="${{ github.event.check_suite.head_branch }}"
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send Slack notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          TYPE="${{ steps.event.outputs.type }}"
+          TITLE="${{ steps.event.outputs.title }}"
+          URL="${{ steps.event.outputs.url }}"
+          AUTHOR="${{ steps.event.outputs.author }}"
+          NUM="${{ steps.event.outputs.number }}"
+          BRANCH="${{ steps.event.outputs.branch }}"
+
+          case "$TYPE" in
+            pr_created)
+              TEXT=":rocket: *PR #${NUM} created* by ${AUTHOR}\n<${URL}|${TITLE}>"
+              ;;
+            review_approved)
+              TEXT=":white_check_mark: *PR #${NUM} approved* by ${AUTHOR}\n<${URL}|${TITLE}>\n_Ready to merge — needs your approval_"
+              ;;
+            review_changes_requested)
+              TEXT=":warning: *Changes requested* on PR #${NUM} by ${AUTHOR}\n<${URL}|${TITLE}>"
+              ;;
+            checks_success)
+              TEXT=":green_circle: *All checks passed* on \`${BRANCH}\`"
+              ;;
+            checks_failure)
+              TEXT=":red_circle: *Checks failed* on \`${BRANCH}\`"
+              ;;
+            *)
+              exit 0
+              ;;
+          esac
+
+          curl -sS -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\": \"${TEXT}\"}"
