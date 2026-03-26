@@ -29,13 +29,14 @@ case "$CHANNEL" in
     if [[ "$(uname)" != "Darwin" ]]; then
       echo "iMessage requires macOS" >&2; exit 1
     fi
+    SAFE_MSG="${MESSAGE//\"/\\\"}"
+    SAFE_RCPT="${RECIPIENT//\"/\\\"}"
     osascript -e "tell application \"Messages\"
       set targetService to 1st account whose service type = iMessage
-      set targetBuddy to participant \"$RECIPIENT\" of targetService
-      send \"[jadecli] $MESSAGE\" to targetBuddy
+      set targetBuddy to participant \"$SAFE_RCPT\" of targetService
+      send \"[jadecli] $SAFE_MSG\" to targetBuddy
     end tell" 2>/dev/null && echo "Sent via iMessage to $RECIPIENT" || {
-      # Fallback: terminal-notifier or osascript notification
-      osascript -e "display notification \"$MESSAGE\" with title \"jadecli\" sound name \"Glass\"" 2>/dev/null
+      osascript -e "display notification \"$SAFE_MSG\" with title \"jadecli\" sound name \"Glass\"" 2>/dev/null
       echo "Sent via macOS notification"
     }
     ;;
@@ -44,9 +45,10 @@ case "$CHANNEL" in
     if [[ -z "$SLACK_WEBHOOK" ]]; then
       echo "Set SLACK_WEBHOOK_URL or secrets.SLACK_WEBHOOK_URL" >&2; exit 1
     fi
-    curl -sS -X POST "$SLACK_WEBHOOK" \
-      -H 'Content-Type: application/json' \
-      -d "{\"text\": \"$MESSAGE\"}"
+    jq -n --arg text "$MESSAGE" '{text: $text}' | \
+      curl -sS -X POST "$SLACK_WEBHOOK" \
+        -H 'Content-Type: application/json' \
+        -d @-
     echo "Sent via Slack"
     ;;
 
