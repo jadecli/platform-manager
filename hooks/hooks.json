@@ -21,6 +21,17 @@
           }
         ]
       }
+    ],
+    "TaskCreated": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[task-created] $(echo $HOOK_INPUT | jq -r '.tool_input.subject // \"untitled\"')\" >> /tmp/jadecli-tasks.log"
+          }
+        ]
+      }
     ]
   }
 }
