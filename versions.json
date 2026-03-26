@@ -1,10 +1,9 @@
 {
-  "pinned": "2026-03-25",
+  "pinned": "2026-03-26",
   "install": {
     "claude-cli": "native",
     "note": "npm path deprecated — use curl -fsSL https://claude.ai/install.sh | bash -s <version>"
   },
-  "pinned": "2026-03-26",
   "runtime": {
     "claude-cli": "2.1.84",
     "node": "22.21.1",
