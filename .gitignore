@@ -16,3 +16,7 @@ dist/
 
 # OS
 .DS_Store
+
+# Google Drive for Desktop temp sync artifacts
+.tmp.drivedownload/
+.tmp.driveupload/
