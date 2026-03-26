@@ -11,6 +11,20 @@
     "rustc": "1.93.1",
     "uv": "0.11.0"
   },
+  "anthropic-sdk-alignment": {
+    "note": "Versions pinned by Anthropic SDK repos — install via mise for SDK development",
+    "source": "github.com/anthropics/anthropic-sdk-typescript + anthropic-sdk-python",
+    "node": "20",
+    "node-types": "@types/node@^20.17.6",
+    "typescript": "5.8.3",
+    "packageManager": "yarn@1.22.22",
+    "python": "3.9.18",
+    "python-requires": ">=3.9",
+    "uv": ">=0.9",
+    "build-system": "hatchling@1.26.3",
+    "ruff": "latest",
+    "pyright": "1.1.399"
+  },
   "casks": {
     "1password": "8.12.5",
     "claude-devtools": "0.4.7",
