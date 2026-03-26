@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<audits generated="2026-03-26">
+
+<!-- ============================================================
+     AUDIT 1: MCP
+     Sources: bootstrap/claude-config/settings.json (mcpServers)
+              bootstrap/claude-config/claude-desktop/claude_desktop_config.json
+     Doc: https://code.claude.com/docs/en/mcp
+     ============================================================ -->
+<audit source="https://code.claude.com/docs/en/mcp" date="2026-03-26">
+
+  <aligned>
+    <!-- claude_desktop_config.json -->
+    - Four stdio servers configured correctly: filesystem, github, memory, sqlite — all use
+      `npx -y` pattern, correct `command`/`args` shape, env vars referenced via shell-style
+      `${GITHUB_PERSONAL_ACCESS_TOKEN}` substitution.
+    - github server passes GITHUB_PERSONAL_ACCESS_TOKEN via `env` block (correct pattern).
+    - sqlite server uses explicit `--db-path` arg pointing to a persistent file.
+
+    <!-- settings.json env block -->
+    - ENABLE_TOOL_SEARCH=auto:5 is set — matches the `auto:&lt;N&gt;` threshold pattern
+      documented under "Configure tool search" (5% context threshold, correctly tuned below
+      the default 10%).
+    - MCP_TOOL_TIMEOUT=600000 is set — controls per-tool timeout, consistent with docs
+      recommendation to configure MCP_TIMEOUT for slow servers.
+    - CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 — reduces background calls, appropriate
+      for high-volume MCP usage.
+  </aligned>
+
+  <gaps>
+    <!-- Transport types -->
+    - All four MCP servers in claude_desktop_config.json use stdio (npx). No HTTP or SSE
+      remote servers are configured in either config file. Docs recommend HTTP as the
+      preferred transport for remote/cloud services; stdio is only appropriate for local
+      processes.
+    - SSE transport is now deprecated per docs ("Use HTTP servers instead, where available").
+      No SSE servers exist today, but any future remote additions should use `--transport http`.
+
+    <!-- Scopes -->
+    - No project-scoped `.mcp.json` at /Users/alexzh/platform-manager root. Project-scoped
+      servers enable team sharing via version control. The platform-manager plugin is
+      team-distributed, so shared servers belong in `.mcp.json` rather than in the
+      claude_desktop_config.json personal file.
+    - All servers currently sit in claude_desktop_config.json (Desktop global scope), not
+      in Claude Code scopes (local/project/user via `~/.claude.json`). Docs note
+      `claude mcp add-from-claude-desktop` can migrate these, and scoping at `user` or
+      `project` level is preferred for Claude Code workflows.
+
+    <!-- Auth -->
+    - No OAuth 2.0 configuration present for any server. Docs show `/mcp` command triggers
+      OAuth flow for remote servers (Sentry, GitHub HTTP endpoint, Notion, etc.). The github
+      server uses a PAT via env var, which is valid but less secure than OAuth for remote
+      HTTP servers.
+    - No `headersHelper` or static `headers` configured for any server — relevant if any
+      future HTTP servers need non-OAuth auth (Kerberos, SSO tokens, short-lived creds).
+
+    <!-- Advanced features unused -->
+    - `MAX_MCP_OUTPUT_TOKENS` not set in settings.json env block. Default cap is 25,000
+      tokens; the crawler/database workflows in this repo could easily exceed that.
+    - MCP `list_changed` dynamic tool updates: no configuration or documentation of which
+      servers support this; sqlite and filesystem servers likely do not, but worth verifying.
+    - MCP resources (`@server:protocol://resource/path` @ mentions) not documented or
+      demonstrated anywhere in the config/skills.
+    - MCP prompts as commands (`/mcp__servername__promptname`) not leveraged in any skill.
+    - `ENABLE_CLAUDEAI_MCP_SERVERS` not set — defaults to enabled; if Claude.ai connectors
+      are not wanted in Claude Code sessions, this should be explicitly set to `false`.
+
+    <!-- Managed/enterprise -->
+    - No `managed-mcp.json` at macOS system path
+      `/Library/Application Support/ClaudeCode/managed-mcp.json`. For a 5-surface ecosystem
+      treated as enterprise, a managed config ensures all surfaces use the same approved
+      server set.
+    - No `allowedMcpServers` / `deniedMcpServers` policy in any settings file. Docs describe
+      these for org-level governance; relevant given the multi-identity setup.
+
+    <!-- Plugin-provided MCP -->
+    - The platform-manager plugin has no `.mcp.json` at plugin root. The plugin.json
+      description promises "ecosystem hooks" but bundles no MCP servers. If neon-postgres
+      or other data services should travel with the plugin, they need `.mcp.json` in the
+      plugin root (not in claude_desktop_config.json).
+  </gaps>
+
+  <actions>
+    1. CREATE /Users/alexzh/platform-manager/.mcp.json
+       Add project-scoped MCP servers that all surfaces should share (e.g. neon-postgres
+       HTTP endpoint, any internal tooling). Use `${VAR:-default}` expansion for env-specific
+       values. Commit to version control so all surfaces pick it up.
+
+    2. MODIFY /Users/alexzh/platform-manager/bootstrap/claude-config/claude-desktop/claude_desktop_config.json
+       (or migrate via `claude mcp add-from-claude-desktop`)
+       Migrate github server from PAT+stdio to HTTP transport with OAuth:
+         claude mcp add --transport http github https://api.githubcopilot.com/mcp/ --scope user
+       Then run `/mcp` to complete OAuth flow. Remove the PAT-based npx entry.
+
+    3. MODIFY /Users/alexzh/platform-manager/bootstrap/claude-config/settings.json (env block)
+       Add: "MAX_MCP_OUTPUT_TOKENS": "50000"
+       Rationale: crawler pipelines query Neon Postgres and may return large result sets.
+
+    4. CREATE /Users/alexzh/platform-manager/.claude-plugin/.mcp.json
+       (or add `mcpServers` inline in .claude-plugin/plugin.json)
+       Bundle the neon-postgres MCP server with the plugin so it activates automatically
+       on plugin enable, removing the need for per-surface manual setup:
+         { "mcpServers": { "neon": { "type": "http", "url": "...", ... } } }
+
+    5. CONSIDER creating /Library/Application Support/ClaudeCode/managed-mcp.json
+       for the approved server set (filesystem, github, memory, neon) to enforce
+       consistency across all 5 surfaces. Requires admin privileges; defer if single-user.
+  </actions>
+
+</audit>
+
+
+<!-- ============================================================
+     AUDIT 2: PLUGINS + DISCOVER-PLUGINS
+     Sources: bootstrap/claude-config/settings.json (enabledPlugins, extraKnownMarketplaces)
+              versions.json (vendor entries)
+     Docs: https://code.claude.com/docs/en/plugins
+           https://code.claude.com/docs/en/discover-plugins
+     ============================================================ -->
+<audit source="https://code.claude.com/docs/en/plugins + https://code.claude.com/docs/en/discover-plugins" date="2026-03-26">
+
+  <aligned>
+    <!-- Plugin manifest -->
+    - /Users/alexzh/platform-manager/.claude-plugin/plugin.json exists with required fields:
+      `name`, `description`, `version`, `author`, `repository` — all correctly shaped.
+    - `settings.json` at plugin root uses the supported `agent` key (`"agent": "platform-agent"`)
+      to activate a custom agent on plugin enable — matches the documented pattern exactly.
+    - `.lsp.json` at plugin root correctly bundles 8 language servers (TypeScript, Python,
+      Rust, Go, Lua, Bash, TOML, YAML) following the documented LSP plugin schema.
+    - Plugin structure is correct: `.claude-plugin/` contains only `plugin.json`; `skills/`,
+      `agents/`, `.lsp.json`, `settings.json` are at plugin root as docs require.
+
+    <!-- Marketplace / enabledPlugins -->
+    - `extraKnownMarketplaces` in settings.json registers 5 marketplaces correctly:
+      claude-plugins-official, knowledge-work-plugins, anthropic-agent-skills, neon,
+      netlify-context-and-tools — all using `{ "source": "github", "repo": "owner/repo" }`
+      format as documented.
+    - `enabledPlugins` activates 5 plugins across those marketplaces:
+      document-skills, example-skills, neon-postgres, pyright-lsp, netlify-skills.
+    - `pyright-lsp@claude-plugins-official` installed from official marketplace — matches
+      the recommended approach for pre-built LSP plugins (docs: "install from official
+      marketplace" for Python/TypeScript/Rust/Go).
+    - versions.json `vendor` section tracks `anthropics/claude-code` by hash + date,
+      matching the marketplace source for `anthropic-agent-skills`.
+
+    <!-- Code intelligence -->
+    - Custom `.lsp.json` bundles 8 language servers beyond what the official marketplace
+      covers (Bash, TOML, YAML, Lua not in the official list), which is exactly the
+      documented use case for custom LSP plugins.
+    - versions.json `lsp` section pins all 8 binary versions — good operational hygiene
+      that the docs recommend ("binary required" per language).
+  </aligned>
+
+  <gaps>
+    <!-- Plugin governance -->
+    - No `pluginAccess` key anywhere in settings.json. Docs describe scope-based plugin
+      installation (user/project/local/managed). Current `enabledPlugins` is a flat map
+      with no scope annotation — unclear which plugins are user-scoped vs project-scoped.
+      Project-scope plugins should be installed via `.claude/settings.json` so teammates
+      auto-get them on repo trust.
+    - No `extraKnownMarketplaces` at project level (`.claude/settings.json` in repo root
+      does not exist). Docs recommend adding `extraKnownMarketplaces` there for team
+      marketplace propagation. Currently it lives only in the bootstrap/global settings.
+
+    <!-- Missing official marketplace plugins -->
+    - `typescript-lsp@claude-plugins-official` NOT in enabledPlugins despite TypeScript
+      being the primary language. Instead, the custom `.lsp.json` bundles `typescript-
+      language-server` directly. This is valid but bypasses official plugin lifecycle
+      (auto-update, error reporting via `/plugin` Errors tab). Same applies to
+      `rust-analyzer-lsp`, `gopls-lsp`.
+    - `github@claude-plugins-official` NOT installed. Docs list it as a first-class
+      "External integrations" plugin that bundles a pre-configured MCP server + commands,
+      which would eliminate the manual PAT-based github server in claude_desktop_config.json.
+    - `commit-commands@claude-plugins-official` (or `anthropics-claude-code`) NOT in
+      enabledPlugins. The CLAUDE.md defines git workflow rules but no commit skill is
+      bundled. The vendor/anthropics/claude-code/plugins/commit-commands plugin is vendored
+      but not wired up via marketplace install.
+    - `pr-review-toolkit@claude-plugins-official` NOT installed. Docs describe it as a
+      specialized agent for PR review — relevant given the CI/github-action workflows.
+    - `agent-sdk-dev@claude-plugins-official` NOT installed. Repo imports anthropic SDK
+      (versions.json vendors both Python and TypeScript SDKs). This plugin adds SDK-specific
+      tools and agents.
+    - `sentry@claude-plugins-official` NOT installed. Not in enabledPlugins or
+      extraKnownMarketplaces despite being listed under "External integrations."
+
+    <!-- Plugin auto-update -->
+    - No explicit auto-update configuration documented. Docs say official marketplace plugins
+      have auto-update enabled by default; third-party (neon, netlify) have it disabled.
+      No `FORCE_AUTOUPDATE_PLUGINS` or `DISABLE_AUTOUPDATER` env var set — implicit reliance
+      on defaults.
+    - No `/reload-plugins` hook in SessionStart or ConfigChange hooks. Docs recommend
+      running `/reload-plugins` after plugin changes; having a hook trigger it on ConfigChange
+      would automate this.
+
+    <!-- Plugin distribution -->
+    - The platform-manager plugin has no `hooks/hooks.json`. The `hooks` section in
+      settings.json (PostToolUse, SessionStart, etc.) is not bundled with the plugin —
+      means hooks don't travel with plugin installs. Docs show `hooks/hooks.json` as a
+      supported plugin component.
+    - No `commands/` directory in plugin root. All custom commands in CLAUDE.md
+      (`/check-cli-docs`, `/sdk-scaffold`, etc.) are defined as CLAUDE.md text, not as
+      proper plugin commands or skills. Docs: "commands/ at plugin root" for slash commands.
+    - Plugin not submitted to any marketplace. versions.json shows it at a GitHub repo
+      (`jadecli/platform-manager`) but no marketplace.json exists in the repo, so
+      `/plugin install platform-manager@...` is not possible for other surfaces.
+    - No `--plugin-dir` development workflow documented. Docs recommend `claude --plugin-dir
+      ./platform-manager` for local iteration; no script or Makefile target exists for this.
+  </gaps>
+
+  <actions>
+    1. MODIFY /Users/alexzh/platform-manager/bootstrap/claude-config/settings.json
+       Add to enabledPlugins:
+         "typescript-lsp@claude-plugins-official": true,
+         "rust-analyzer-lsp@claude-plugins-official": true,
+         "gopls-lsp@claude-plugins-official": true,
+         "github@claude-plugins-official": true,
+         "commit-commands@anthropics-claude-code": true,
+         "agent-sdk-dev@claude-plugins-official": true
+       (keeps custom .lsp.json for Bash/TOML/YAML/Lua which have no official plugin)
+
+    2. CREATE /Users/alexzh/platform-manager/.claude/settings.json
+       Add project-level extraKnownMarketplaces so repo-trust propagates marketplaces
+       to all surfaces automatically:
+         { "extraKnownMarketplaces": { "neon": { ... }, "netlify-context-and-tools": { ... } } }
+
+    3. CREATE /Users/alexzh/platform-manager/hooks/hooks.json
+       Migrate the PostToolUse and relevant lifecycle hooks from bootstrap settings.json
+       into the plugin so they travel with plugin installation:
+         { "hooks": { "PostToolUse": [ { "matcher": "Edit|Write", "hooks": [...] } ] } }
+
+    4. CREATE /Users/alexzh/platform-manager/commands/ directory
+       Convert CLAUDE.md slash-command stubs (/check-cli-docs, /sdk-scaffold, /skill-audit,
+       /quick, etc.) into proper Markdown command files so they appear in `/` autocomplete
+       and benefit from `$ARGUMENTS` substitution.
+
+    5. CREATE /Users/alexzh/platform-manager/.claude-plugin/marketplace.json
+       Register the plugin in a local marketplace so surfaces can install via:
+         /plugin marketplace add anthropics/platform-manager (or local path)
+         /plugin install platform-manager@platform-manager
+  </actions>
+
+</audit>
+
+
+<!-- ============================================================
+     AUDIT 3: SKILLS
+     Sources: skills/ directory (5 skills + 1 agent)
+              bootstrap/claude-config/settings.json
+              bootstrap/claude-config/commands/ (does not exist)
+     Doc: https://code.claude.com/docs/en/skills
+     ============================================================ -->
+<audit source="https://code.claude.com/docs/en/skills" date="2026-03-26">
+
+  <aligned>
+    <!-- Frontmatter format -->
+    - All 5 skills (dotfile-audit, repo-context, scrapy-sdk, surface-config, surface-init)
+      have SKILL.md with valid YAML frontmatter between `---` markers.
+    - `name` field present and lowercase-hyphenated in all skills.
+    - `description` field present in all skills with contextual "Use when..." language that
+      helps Claude decide when to auto-invoke — matches the recommended description format.
+    - `effort: low` used in repo-context and surface-init — correct use of the effort
+      frontmatter field for lightweight context-loading skills.
+    - Supporting files pattern used correctly: scrapy-sdk has a `references/` subdirectory;
+      surface-config has a `scripts/` subdirectory — matches "Add supporting files" pattern.
+    - agents/platform-agent.md follows the subagent spec: `name`, `description`, `model`,
+      `initialPrompt`, `tools` all present.
+
+    <!-- Invocation control -->
+    - dotfile-audit, surface-init, surface-config do NOT set `disable-model-invocation: true`,
+      which is intentional — Claude can load them when contextually relevant (audit on drift
+      detection, init on session start, config on surface setup questions). Appropriate default.
+    - repo-context and surface-init both use `effort: low`, correctly signaling low-cost
+      auto-loading.
+
+    <!-- Skill directory structure -->
+    - Each skill is a directory containing SKILL.md as entrypoint — matches the required
+      `skill-name/SKILL.md` structure exactly.
+    - Plugin skills are at plugin root `skills/` (not inside `.claude-plugin/`) — correct
+      per the "Common mistake" warning in docs.
+  </aligned>
+
+  <gaps>
+    <!-- Missing frontmatter fields -->
+    - NONE of the 5 skills use `disable-model-invocation: true`. While appropriate for
+      most, surface-config and scrapy-sdk have side effects (writes config files, runs
+      scrapy commands). These should be protected from accidental auto-invocation.
+      Docs: "Use for workflows you want to trigger manually... /deploy, /send-slack-message."
+    - No skill uses `allowed-tools` to restrict tool access. scrapy-sdk invokes Bash to
+      run scrapy commands; restricting to `Bash(scrapy *), Read, Write` would prevent
+      accidental broad tool use during skill execution.
+    - No skill uses `context: fork` for subagent isolation. dotfile-audit reads external
+      XML files and compares state — this is a read-heavy research task ideal for
+      `context: fork` with `agent: Explore` to avoid polluting main conversation context.
+    - No skill uses `user-invocable: false`. The `surface-init` skill is background
+      knowledge (loads at session start automatically); hiding it from the `/` menu with
+      `user-invocable: false` would reduce noise while keeping Claude's auto-invoke working.
+    - No skill uses `argument-hint` in frontmatter. scrapy-sdk and repo-context accept
+      implicit arguments (URLs, repo names) but provide no autocomplete hint. Docs:
+      `argument-hint: "[repo-url]"` improves DX.
+    - No skill uses `model` override. repo-context and surface-init are low-effort reads
+      that could be pinned to a faster/cheaper model (e.g. `model: haiku`) to save tokens
+      on frequent auto-invocations.
+
+    <!-- Missing skills -->
+    - No `surface-audit` skill (compare all 5 surfaces' settings for drift). The
+      dotfile-audit skill only covers the local surface; a cross-surface audit is described
+      in the platform-agent but not packaged as an invocable skill.
+    - No skill wraps the `/check-cli-docs`, `/check-platform-docs`, `/sdk-scaffold` commands
+      referenced in CLAUDE.md. These are stubs in prose, not actual SKILL.md files. They
+      should be promoted to skills with proper frontmatter.
+    - No `session-logger` or session-summary skill despite a SessionEnd hook in settings.json
+      that calls session-lifecycle.sh. A skill that logs or summarizes the session would
+      complement the hook.
+
+    <!-- Skill content quality -->
+    - scrapy-sdk/SKILL.md references TypeScript CLI (`@jadecli/scrapy-cli`) but does not
+      use `!`command`` dynamic context injection to pre-fetch available spider list or
+      validate CLI presence before Claude acts. Docs: `!`command`` runs preprocessing
+      before Claude sees the prompt.
+    - dotfile-audit/SKILL.md references absolute paths
+      (`/Users/alexzh/jadecli-ecosystem/shared/context/dotfiles.xml`) hardcoded in the
+      skill body. Should use `${CLAUDE_SKILL_DIR}` substitution or relative path patterns
+      to remain portable across surfaces.
+    - surface-init/SKILL.md also hardcodes `/Users/alexzh/jadecli-ecosystem/` paths.
+      Same portability concern.
+    - No skill in the plugin uses `hooks` frontmatter field for skill-scoped lifecycle
+      hooks (e.g. a PostToolUse hook scoped only to scrapy-sdk to validate generated
+      spider files).
+
+    <!-- Skills budget / discovery -->
+    - 5 plugin skills + no budget override. If more skills are added (e.g. after converting
+      CLAUDE.md commands), the 16,000-char default budget may be exceeded. No
+      `SLASH_COMMAND_TOOL_CHAR_BUDGET` env var set in settings.json.
+    - `bootstrap/claude-config/skills/` directory does not exist (Glob returned nothing).
+      The bootstrap config package has settings, hooks, and commands stubs in CLAUDE.md
+      but no standalone skills separate from the plugin.
+    - `bootstrap/claude-config/commands/` directory does not exist. All custom commands
+      are embedded in CLAUDE.md prose, not in discoverable Markdown files.
+
+    <!-- agent frontmatter -->
+    - platform-agent.md uses `model: sonnet` (short alias). Docs show model field accepts
+      full model IDs. The alias may resolve correctly but should be verified against the
+      supported values list; prefer explicit `claude-sonnet-4-5` or similar.
+    - platform-agent.md has no `effort` field. Given it reads multiple XML files at startup
+      (`initialPrompt` triggers reads), `effort: medium` would be appropriate.
+  </gaps>
+
+  <actions>
+    1. MODIFY /Users/alexzh/platform-manager/skills/surface-config/SKILL.md
+       Add to frontmatter:
+         disable-model-invocation: true
+         allowed-tools: Read, Write, Edit, Bash(bash scripts/*)
+       Rationale: writes config files; should only run on explicit user invocation.
+
+    2. MODIFY /Users/alexzh/platform-manager/skills/scrapy-sdk/SKILL.md
+       Add to frontmatter:
+         disable-model-invocation: true
+         allowed-tools: Read, Write, Bash(scrapy *), Bash(npx @jadecli/scrapy-cli *)
+         argument-hint: "[spider-name] [target-url]"
+       Also add `!`npx @jadecli/scrapy-cli list 2>/dev/null`` inline context injection
+       so Claude sees available spiders before acting.
+
+    3. MODIFY /Users/alexzh/platform-manager/skills/dotfile-audit/SKILL.md
+       Add to frontmatter:
+         context: fork
+         agent: Explore
+         allowed-tools: Read, Glob, Grep
+         disable-model-invocation: true
+       Replace hardcoded /Users/alexzh paths with ${CLAUDE_SKILL_DIR}-relative references
+       or parametric $ARGUMENTS for surface root.
+
+    4. MODIFY /Users/alexzh/platform-manager/skills/surface-init/SKILL.md
+       Add to frontmatter:
+         user-invocable: false
+       Rationale: background loader; not a user-invocable action. Claude should auto-load
+       it; it should not appear in the `/` menu.
+       Also replace hardcoded /Users/alexzh/jadecli-ecosystem paths with $ARGUMENTS[0]
+       fallback or env-var injection.
+
+    5. MODIFY /Users/alexzh/platform-manager/skills/repo-context/SKILL.md
+       Add to frontmatter:
+         model: claude-haiku-4-5
+         argument-hint: "[repo-path-or-url]"
+       Rationale: pure read task; haiku is sufficient and saves tokens on frequent
+       auto-invocations when entering new repos.
+
+    6. CREATE /Users/alexzh/platform-manager/skills/check-cli-docs/SKILL.md
+       Convert the /check-cli-docs CLAUDE.md stub into a proper skill:
+         ---
+         name: check-cli-docs
+         description: Fetches and summarizes Claude Code CLI documentation for a topic.
+         context: fork
+         agent: Explore
+         allowed-tools: WebFetch, Read
+         argument-hint: "[topic]"
+         ---
+       (Repeat pattern for /sdk-scaffold, /structured-output, /tool-definition)
+
+    7. MODIFY /Users/alexzh/platform-manager/bootstrap/claude-config/settings.json (env block)
+       Add: "SLASH_COMMAND_TOOL_CHAR_BUDGET": "32000"
+       Rationale: 5 current skills + new ones from action 6 will approach the 16k default.
+  </actions>
+
+</audit>
+
+</audits>

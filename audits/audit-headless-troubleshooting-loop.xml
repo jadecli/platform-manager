@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<audits generated="2026-03-26" repo="/Users/alexzh/platform-manager">
+
+<!-- ================================================================== -->
+<!--  AUDIT 1: HEADLESS / AGENT SDK CLI                                  -->
+<!-- ================================================================== -->
+<audit source="https://code.claude.com/docs/en/headless" date="2026-03-26">
+
+  <aligned>
+    - --bare mode used correctly in bootstrap/claude-config/commands/quick.md:
+      "claude --bare -p $ARGUMENTS" with disable-model-invocation: true (no context loaded).
+    - quick.md documents ANTHROPIC_API_KEY requirement for --bare mode (OAuth/keychain disabled).
+    - quick.md documents combining --bare with --output-format json for machine-parseable output.
+    - quick.md documents combining --bare with --model sonnet for cheaper queries.
+    - GitHub Actions (claude-action.yml, claude-code-review.yml) use
+      anthropics/claude-code-action@v1 which runs headless (-p) mode internally.
+    - claude-code-review.yml passes claude_args with --max-turns 15 --max-budget-usd 5
+      (correct headless budget/turn limiting pattern).
+    - claude-action.yml uses claude_code_oauth_token for authentication (correct for headless;
+      not ANTHROPIC_API_KEY).
+    - check-integrations.sh validates claude auth is active (required for OAuth flows).
+    - quick.md documents combining --output-format json with --allowedTools.
+    - bootstrap/phases/02-claude.sh references CLAUDE_CODE_SUBPROCESS_ENV_SCRUB which is a
+      headless security best practice (prevents subprocess credential leakage).
+  </aligned>
+
+  <gaps>
+    1. --output-format json with --json-schema is not used anywhere in CI workflows or scripts.
+       The docs show structured output via --json-schema with a JSON Schema definition which
+       enables typed/validated JSON from headless calls. Our workflows use prose output only.
+
+    2. --output-format stream-json is not configured in any workflow or script.
+       Useful for long-running CI tasks where real-time progress and retry events matter.
+
+    3. --continue / --resume session chaining is not used in any CI script.
+       Docs show capturing session_id from --output-format json output then using
+       --resume "$session_id" for multi-step pipelines. None of our pipelines chain sessions.
+
+    4. --append-system-prompt is not used in any workflow.
+       The security-review.yml and claude-code-review.yml could inject reviewer personas without
+       replacing the full system prompt. Currently they embed persona in the user-facing
+       "prompt:" field of the action (user message, not system prompt addition).
+
+    5. --bare flag is not passed in GitHub Actions claude_args.
+       Docs explicitly recommend --bare for all CI/scripted calls so they do not pick up
+       whatever hooks, CLAUDE.md, and MCP servers happen to be configured in the runner
+       environment. Both claude-action.yml (line 42) and claude-code-review.yml (line 76)
+       omit --bare — a reproducibility and isolation gap.
+
+    6. api_retry stream event handling (type: system, subtype: api_retry) is not handled in
+       any script. For resilient CI pipelines the docs describe using this event for custom
+       backoff logic. None of our shell wrappers handle retry events.
+
+    7. --fork-session is not used in any multi-session workflow. Useful for branching
+       investigative CI runs without polluting the original session.
+
+    8. jq parsing of --output-format json responses is not standardized. quick.md mentions
+       it as a pattern but no shared helper enforces consistent extraction of .result or
+       .structured_output fields.
+  </gaps>
+
+  <actions>
+    1. ADD --bare to claude_args in both GitHub Actions workflows:
+       .github/workflows/claude-action.yml line 42:
+         from: "--model claude-opus-4-6 --max-turns 25 --max-budget-usd 5"
+         to:   "--bare --model claude-opus-4-6 --max-turns 25 --max-budget-usd 5"
+       .github/workflows/claude-code-review.yml line 76:
+         from: "--max-turns 15 --max-budget-usd 5 --model claude-opus-4-6"
+         to:   "--bare --max-turns 15 --max-budget-usd 5 --model claude-opus-4-6"
+
+    2. ADD --json-schema example to bootstrap/claude-config/commands/structured-output.md.
+       Document the headless pattern:
+         claude --bare -p "..." --output-format json
+           --json-schema '{"type":"object","properties":{"result":{"type":"string"}}}'
+           | jq '.structured_output'
+       File: /Users/alexzh/platform-manager/bootstrap/claude-config/commands/structured-output.md
+
+    3. ADD session-chaining pattern to bootstrap/claude-config/commands/quick.md.
+       Document --resume with session_id captured via jq for multi-step headless pipelines.
+       File: /Users/alexzh/platform-manager/bootstrap/claude-config/commands/quick.md
+
+    4. ADD --append-system-prompt to the security-review workflow to inject the reviewer
+       persona at the system level rather than in the user message prompt field.
+       File: /Users/alexzh/platform-manager/.github/workflows/security-review.yml
+  </actions>
+
+</audit>
+
+
+<!-- ================================================================== -->
+<!--  AUDIT 2: TROUBLESHOOTING                                           -->
+<!-- ================================================================== -->
+<audit source="https://code.claude.com/docs/en/troubleshooting" date="2026-03-26">
+
+  <aligned>
+    - bootstrap/phases/02-claude.sh uses the native installer (curl https://claude.ai/install.sh),
+      correctly avoiding the deprecated npm install. npm uninstall migration is also handled.
+    - bootstrap/phases/02-claude.sh checks "claude auth status" and prompts the operator to run
+      "claude auth login" — matches the docs' authentication troubleshooting guidance.
+    - bootstrap/phases/06-validate.sh checks "claude --version" against versions.json, catching
+      version mismatches as recommended in the docs' "verify the binary works" step.
+    - integrations/tests/check-integrations.sh validates CLAUDE_CODE_OAUTH_TOKEN org secret
+      exists, matching the docs' 403 Forbidden resolution.
+    - bootstrap/phases/02-claude.sh sets CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 in managed-settings,
+      matching the docs' credential isolation guidance.
+    - bootstrap/phases/02-claude.sh installs bubblewrap and socat on Linux (sandbox deps),
+      matching the WSL2/Linux sandbox troubleshooting fix on the docs page.
+    - managed-settings.d/00-jadecli-security.json sets sandbox.failIfUnavailable: true,
+      aligning with the docs' sandbox hardening recommendation.
+    - bootstrap/phases/06-validate.sh checks managed-settings.d deployment, producing
+      pass/fail output similar to what /doctor checks.
+    - check-integrations.sh uses a PASS/FAIL/SKIP pattern that mirrors /doctor output structure.
+    - check-integrations.sh validates claude auth status (required for OAuth/remote-control).
+  </aligned>
+
+  <gaps>
+    1. /doctor command is never called in bootstrap scripts or check-integrations.sh.
+       Docs say /doctor checks: installation type, version, search functionality, auto-update
+       status, invalid settings files (malformed JSON), MCP server config errors, keybinding
+       problems, context usage warnings (large CLAUDE.md, high MCP token usage), plugin and
+       agent loading errors. None of these checks are delegated to /doctor in our validation.
+
+    2. USE_BUILTIN_RIPGREP=0 is not set anywhere in managed settings or env vars.
+       Docs flag that Search, @file mentions, custom agents, and skills fail silently if
+       system ripgrep is missing and this env var is not configured.
+
+    3. ripgrep is not validated in 06-validate.sh. It is in the Brewfile but there is no
+       version check or availability assertion in the validation phase.
+
+    4. /status command usage is not documented or scripted. Docs say to run /status inside
+       Claude Code to confirm which authentication method is active. No script automates
+       this check (check-integrations.sh uses the "claude auth status" CLI flag, which is
+       different from the in-session /status command that shows auth precedence).
+
+    5. ANTHROPIC_API_KEY interference check is missing. The docs describe a specific failure
+       where ANTHROPIC_API_KEY in the environment overrides OAuth credentials and causes
+       "This organization has been disabled" errors. No script checks for this variable's
+       presence in the shell environment or profiles (~/.zshrc, ~/.bashrc).
+
+    6. NODE_EXTRA_CA_CERTS is not documented in bootstrap for corporate proxy scenarios.
+       The troubleshooting page calls this out as essential for TLS inspection proxies.
+       bootstrap/phases/02-claude.sh does not handle or document it.
+
+    7. /compact is not referenced in any automation or hook. Docs recommend /compact
+       regularly to reduce context size for performance. The pre-compact and post-compact
+       hooks exist in bootstrap/claude-config/hooks/ but no threshold-based trigger exists.
+
+    8. Conflicting installations check (which -a claude) is not run during bootstrap
+       validation. The docs provide an explicit multi-installation detection procedure
+       covering native, npm, and Homebrew variants.
+
+    9. Configuration file locations are not fully inventoried or asserted writable in
+       bootstrap. The docs list 7 config paths; bootstrap does not verify all are accessible
+       (e.g., .mcp.json, managed-mcp.json, .claude/settings.local.json per-project).
+  </gaps>
+
+  <actions>
+    1. ADD /doctor invocation to bootstrap/phases/06-validate.sh as a final validation step:
+         DOCTOR_OUT=$(claude --bare -p "/doctor" 2>&amp;1 || true)
+         if echo "$DOCTOR_OUT" | grep -qi "error\|invalid"; then
+           printf "  %-30s FAIL /doctor found issues\n" "claude /doctor"
+           echo "$DOCTOR_OUT"
+         else
+           printf "  %-30s PASS\n" "claude /doctor"
+         fi
+       File: /Users/alexzh/platform-manager/bootstrap/phases/06-validate.sh
+
+    2. ADD ripgrep version check to bootstrap/phases/06-validate.sh:
+         check "ripgrep" "$(jq -r '.tools.ripgrep // "any"' "$VERSIONS")" \
+           "$(rg --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo none)"
+       AND add USE_BUILTIN_RIPGREP=0 to the env block in:
+       File: /Users/alexzh/platform-manager/bootstrap/managed-settings.d/00-jadecli-security.json
+
+    3. ADD ANTHROPIC_API_KEY leak detection to check-integrations.sh (new section):
+         if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+           fail "ANTHROPIC_API_KEY is set in environment — this overrides OAuth credentials"
+         else
+           pass "ANTHROPIC_API_KEY not in environment (OAuth will be used)"
+         fi
+       File: /Users/alexzh/platform-manager/integrations/tests/check-integrations.sh
+
+    4. ADD conflicting-installation check to bootstrap/phases/06-validate.sh:
+         CLAUDE_COUNT=$(which -a claude 2>/dev/null | wc -l | tr -d ' ')
+         if [[ "$CLAUDE_COUNT" -gt 1 ]]; then
+           printf "  %-30s FAIL multiple claude binaries found\n" "claude-single-install"
+         else
+           printf "  %-30s PASS\n" "claude-single-install"
+         fi
+       File: /Users/alexzh/platform-manager/bootstrap/phases/06-validate.sh
+  </actions>
+
+</audit>
+
+
+<!-- ================================================================== -->
+<!--  AUDIT 3: AGENTIC LOOP (HOW CLAUDE CODE WORKS)                     -->
+<!-- ================================================================== -->
+<audit source="https://code.claude.com/docs/en/how-claude-code-works" date="2026-03-26">
+
+  <aligned>
+    - CLAUDE.md uses structured XML sections (role, rules, thinking-strategy, chain-strategy,
+      delegation, env-toolchain, commands) matching the docs' CLAUDE.md persistent-context
+      recommendation.
+    - CLAUDE.md chain-strategy (Read / Plan / Execute / Verify / Report) precisely mirrors
+      the docs' three-phase agentic loop: gather context, take action, verify results.
+    - CLAUDE.md defines structured XML handoff format (task/result XML) for agent delegation,
+      matching the docs' recommendation to give Claude verifiable done-criteria.
+    - Five specialized agents (batch-worker, code-reviewer, doc-researcher, skill-auditor,
+      sdk-guide) plus platform-agent.md implement the docs' subagent isolation pattern.
+    - code-reviewer uses disallowedTools: Write/Edit and permissionMode: dontAsk — correctly
+      implementing a read-only verification agent.
+    - batch-worker uses permissionMode: acceptEdits and isolation: worktree — correctly
+      implementing the docs' parallel worktree pattern.
+    - CLAUDE.md context-management rules match the docs: fork verbose ops to subagents, JIT
+      loading, filter before context, prefer resets over compaction for long runs.
+    - rules/context-management.md "resets over compaction" guidance matches the docs' note
+      that compaction preserves accumulated noise while resets eliminate it.
+    - bootstrap/claude-config/skills/sdk-reference/SKILL.md uses user-invocable: false,
+      matching the docs' on-demand skill loading pattern to keep descriptions out of context.
+    - CLAUDE.md scaling heuristic (simple / focused / parallel) matches the docs' delegation
+      guidance for choosing between direct call, single agent, and multi-agent worktrees.
+    - batch-worker.md "clarify done-criteria before starting — one round-trip now prevents
+      many wasted turns" matches the docs' "be specific upfront" best practice.
+    - platform-agent.md initialPrompt reads session-start.xml, board.xml, manifest.xml —
+      correct auto-loading of persistent context at session start, as docs recommend.
+    - doc-researcher agent has tools restricted to Read, Grep, Glob, WebFetch, Bash and uses
+      permissionMode: dontAsk — clean, scoped delegation matching docs' subagent isolation.
+    - CLAUDE.md delegates self-evaluation to code-reviewer agent ("Never self-evaluate output
+      quality — systematic bias. Delegate to code-reviewer") which matches the docs' guidance
+      to give Claude something external to verify against.
+  </aligned>
+
+  <gaps>
+    1. Plan mode (permissionMode: "plan") is not used in any agent definition or documented
+       in CLAUDE.md for complex exploratory tasks. The docs recommend entering plan mode
+       before implementation ("Explore before implementing"). No agent sets permissionMode: plan
+       nor is there a pattern documented for the read-only analysis phase before execution.
+
+    2. enableFileCheckpointing is not set in batch-worker.md or any CI workflow.
+       The docs say every file edit is reversible via checkpoints and the SDK exposes
+       enableFileCheckpointing: true. Without this, file rewind is unavailable in autonomous
+       CI runs where batch-worker makes coordinated multi-file changes.
+
+    3. "Compact Instructions" section is absent from CLAUDE.md. The docs say: "To control
+       what is preserved during compaction, add a Compact Instructions section to CLAUDE.md."
+       Without this, compaction decisions are left entirely to the model with no project-specific
+       guidance on what to preserve vs. discard.
+
+    4. /context command is not referenced in CLAUDE.md or any runbook. Docs recommend running
+       /context to see what is consuming context window space, and /mcp to check per-server
+       MCP token costs. Neither is documented in our context-management rules or operator
+       commands despite 5 plugins being configured.
+
+    5. --fork-session is not used in any multi-session workflow. The docs describe this as
+       the correct pattern when running parallel sessions from the same starting point (vs.
+       --continue which appends to the same session). Our batch-worker uses worktrees for
+       code isolation but does not use session forking at the conversation level.
+
+    6. Auto mode (background safety checks, full auto) is not mentioned in CLAUDE.md or any
+       operator runbook. Even as a "research preview" note, operators should know it exists
+       and that it is intentionally not enabled in our CI context.
+
+    7. Model switching guidance (/model command) is absent from CLAUDE.md commands section.
+       The docs recommend Sonnet for most tasks and Opus for complex architectural decisions.
+       CLAUDE.md lists commands but not mid-session model-switching or the reasoning for when
+       to escalate to Opus.
+
+    8. Automatic code-reviewer invocation after batch-worker is not wired. CLAUDE.md says
+       "Delegate to code-reviewer" but the orchestrator must remember to do this manually.
+       There is no hook, post-tool handler, or done-criteria check that auto-spawns
+       code-reviewer after batch-worker reports status: done.
+
+    9. Context cost monitoring for MCP plugins is absent. Docs warn a few MCP servers can
+       consume significant context before work starts. We have 5 expected plugins configured
+       in 02-claude.sh but no check on per-session token cost via /mcp.
+
+    10. skills/repo-context/SKILL.md and skills/surface-init/SKILL.md do not have confirmed
+        user-invocable: false or disable-model-invocation: true flags. If large, they may
+        load into every session context automatically.
+  </gaps>
+
+  <actions>
+    1. ADD "Compact Instructions" section to CLAUDE.md after the context-management rules:
+         Preserve: API signatures, file:line references, decisions made, done-criteria
+         status, test output, structured handoff XML.
+         Discard: exploratory reads, intermediate search results, verbose tool output
+         that led to a conclusion.
+       File: /Users/alexzh/platform-manager/bootstrap/claude-config/CLAUDE.md
+
+    2. ADD plan mode to CLAUDE.md chain-strategy or thinking-strategy section:
+         For complex architectural tasks: use permissionMode "plan" (read-only analysis)
+         before switching to execute phase. In CLI: Shift+Tab twice. In SDK:
+         permissionMode: "plan" on the initial query, then re-invoke for execution.
+       File: /Users/alexzh/platform-manager/bootstrap/claude-config/CLAUDE.md
+
+    3. ADD enableFileCheckpointing: true to batch-worker.md frontmatter so autonomous
+       worktree runs can rewind file changes on failure before reporting blocked status.
+       File: /Users/alexzh/platform-manager/bootstrap/claude-config/agents/batch-worker.md
+
+    4. ADD /context and /mcp to the Ops commands in CLAUDE.md commands section:
+         /context — show context window usage breakdown
+         /mcp — show per-server MCP token costs
+       File: /Users/alexzh/platform-manager/bootstrap/claude-config/CLAUDE.md
+
+    5. ADD user-invocable: false and disable-model-invocation: true to any skill that should
+       not auto-load descriptions into every session context. Verify and update:
+       File: /Users/alexzh/platform-manager/skills/repo-context/SKILL.md
+       File: /Users/alexzh/platform-manager/skills/surface-init/SKILL.md
+
+    6. ADD a PostToolUse hook or note in CLAUDE.md delegation section that after batch-worker
+       reports status: done, the orchestrator MUST invoke code-reviewer as the next step.
+       Make this an explicit done-criteria item in the delegation XML template:
+         Add to task template: "After batch-worker completes, invoke code-reviewer before
+         marking the overall task done."
+       File: /Users/alexzh/platform-manager/bootstrap/claude-config/CLAUDE.md
+  </actions>
+
+</audit>
+
+</audits>
