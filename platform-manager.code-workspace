@@ -1,0 +1,40 @@
+{
+  "folders": [
+    {
+      "name": "platform-manager",
+      "path": "platform-manager"
+    },
+    {
+      "name": "claude-config",
+      "path": "../.claude"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.DS_Store": true,
+      "**/__pycache__": true,
+      "**/node_modules": true,
+      "**/.tmp.drivedownload": true,
+      "**/.tmp.driveupload": true
+    },
+    "search.exclude": {
+      "**/.claude/worktrees": true,
+      "**/dist": true,
+      "**/.venv": true,
+      "**/node_modules": true
+    },
+    "editor.formatOnSave": true,
+    "editor.rulers": [100],
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "ms-python.python",
+      "ms-python.black-formatter",
+      "redhat.vscode-yaml"
+    ]
+  }
+}
