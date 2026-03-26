@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Claude Code plugin: LSP servers, agentic crawler, and ecosystem management for jadecli"
 requires-python = ">=3.12"
 dependencies = [
+    "psycopg2-binary>=2.9",
     "scrapy>=2.11",
 ]
 
