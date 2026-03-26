@@ -1,0 +1,47 @@
+{
+  "name": "claude-docs-monitor",
+  "description": "Monitors code.claude.com/docs for daily changes to CLI documentation",
+  "type": "crawl",
+  "allowedDomains": ["code.claude.com"],
+  "startUrls": ["https://code.claude.com/docs/llms.txt"],
+  "fields": [
+    {
+      "name": "title",
+      "selector": { "type": "css", "query": "title", "extract": "first" },
+      "type": "str",
+      "required": true
+    },
+    {
+      "name": "content",
+      "selector": { "type": "css", "query": "main", "extract": "first" },
+      "type": "str"
+    },
+    {
+      "name": "last_modified",
+      "selector": { "type": "css", "query": "meta[name='last-modified']", "attr": "content", "extract": "first" },
+      "type": "str"
+    }
+  ],
+  "rules": [
+    {
+      "allow": "/docs/en/",
+      "callback": "parse_item",
+      "follow": true
+    }
+  ],
+  "rateLimit": {
+    "downloadDelay": 2,
+    "concurrentRequests": 2,
+    "concurrentRequestsPerDomain": 2,
+    "autoThrottle": true,
+    "autoThrottleTargetConcurrency": 1.0,
+    "autoThrottleMaxDelay": 30,
+    "randomizeDelay": true
+  },
+  "output": {
+    "format": "jsonl",
+    "path": "output/claude-docs-%(time)s.jsonl",
+    "overwrite": true
+  },
+  "tags": ["docs", "monitoring", "claude-code"]
+}
