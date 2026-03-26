@@ -28,7 +28,37 @@ jobs:
           fetch-depth: 2
 
       - uses: anthropics/claude-code-security-review@main
+        id: security
         with:
           claude-api-key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           custom-security-scan-instructions: .github/custom-security-categories.txt
           model: claude-sonnet-4-6
+
+      - name: Enforce security verdict
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Check if security-review left any inline comments (HIGH findings)
+          FINDING_COUNT=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/comments" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]") | select(.body | test("Security Issue"))] | length' 2>/dev/null || echo "0")
+
+          echo "Security findings with inline comments: $FINDING_COUNT"
+
+          if [[ "$FINDING_COUNT" -gt 0 ]]; then
+            gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews" \
+              --method POST \
+              --field commit_id="$HEAD_SHA" \
+              --field event="REQUEST_CHANGES" \
+              --field body="Security review: ${FINDING_COUNT} security issue(s) found. See inline comments above. All security issues must be resolved before merge."
+            echo "Submitted REQUEST_CHANGES review ($FINDING_COUNT findings)"
+          else
+            gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews" \
+              --method POST \
+              --field commit_id="$HEAD_SHA" \
+              --field event="APPROVE" \
+              --field body="Security review: no security issues found."
+            echo "Submitted APPROVE review (no findings)"
+          fi

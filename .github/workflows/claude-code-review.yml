@@ -41,14 +41,16 @@ jobs:
       - name: Extract Linear ticket from branch
         id: ticket
         if: github.event_name == 'pull_request'
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
           if [[ "$BRANCH" =~ pm-([0-9]+) ]]; then
             echo "id=PM-${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
             echo "url=https://linear.app/jadecli/issue/PM-${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Claude Code Review
+        id: claude
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -72,24 +74,74 @@ jobs:
             - URL validation on all crawler inputs
             - Parameterized SQL in all Neon queries
 
-            Render verdict: REJECT, REVISE, or APPROVE with justification.
+            IMPORTANT: Your LAST line of output MUST be exactly one of:
+            VERDICT: APPROVE
+            VERDICT: REVISE
+            VERDICT: REJECT
           claude_args: "--max-turns 15 --max-budget-usd 5 --model claude-opus-4-6"
           trigger_phrase: "@claude"
 
+      - name: Enforce review verdict
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Read the latest claude[bot] comment to extract verdict
+          VERDICT=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq '[.[] | select(.user.login == "claude[bot]")] | last | .body' 2>/dev/null \
+            | grep -oE 'VERDICT: (APPROVE|REVISE|REJECT)' | tail -1 | awk '{print $2}' || echo "UNKNOWN")
+
+          # Also check for verdict in older format (### Verdict: **REVISE**)
+          if [[ "$VERDICT" == "UNKNOWN" ]]; then
+            VERDICT=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+              --jq '[.[] | select(.user.login == "claude[bot]")] | last | .body' 2>/dev/null \
+              | grep -oE 'Verdict: \*\*(APPROVE|REVISE|REJECT)\*\*' | tail -1 \
+              | sed 's/Verdict: \*\*//;s/\*\*//' || echo "UNKNOWN")
+          fi
+
+          echo "Detected verdict: $VERDICT"
+
+          case "$VERDICT" in
+            APPROVE)
+              gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews" \
+                --method POST \
+                --field commit_id="$HEAD_SHA" \
+                --field event="APPROVE" \
+                --field body="Claude Code review: APPROVED. All checks passed."
+              echo "Submitted APPROVE review"
+              ;;
+            REVISE|REJECT)
+              gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews" \
+                --method POST \
+                --field commit_id="$HEAD_SHA" \
+                --field event="REQUEST_CHANGES" \
+                --field body="Claude Code review: ${VERDICT}. See inline comments and review summary above for required changes."
+              echo "Submitted REQUEST_CHANGES review"
+              ;;
+            *)
+              echo "Could not determine verdict from claude[bot] comments — skipping review submission"
+              # Don't submit a review if we can't determine the verdict
+              # This prevents accidental approvals
+              ;;
+          esac
+
       - name: Notify on review complete
-        if: always() && github.event_name == 'pull_request' && env.SLACK_WEBHOOK_URL != ''
+        if: always() && github.event_name == 'pull_request' && secrets.SLACK_WEBHOOK_URL != ''
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          JOB_STATUS: ${{ job.status }}
         run: |
-          PR="#${{ github.event.pull_request.number }}"
-          TITLE="${{ github.event.pull_request.title }}"
-          URL="${{ github.event.pull_request.html_url }}"
-          STATUS="${{ job.status }}"
-          if [[ "$STATUS" == "success" ]]; then
-            TEXT=":brain: *Claude reviewed PR ${PR}* — review complete\n<${URL}|${TITLE}>\n_Check review comments, merge if approved_"
+          if [[ "$JOB_STATUS" == "success" ]]; then
+            TEXT=":brain: *Claude reviewed PR #${PR_NUMBER}* — review complete\n<${PR_URL}|${PR_TITLE}>\n_Check review comments, merge if approved_"
           else
-            TEXT=":warning: *Claude review failed* on PR ${PR}\n<${URL}|${TITLE}>"
+            TEXT=":warning: *Claude review failed* on PR #${PR_NUMBER}\n<${PR_URL}|${PR_TITLE}>"
           fi
-          curl -sS -X POST "$SLACK_WEBHOOK_URL" \
-            -H 'Content-Type: application/json' \
-            -d "{\"text\": \"${TEXT}\"}"
+          jq -n --arg text "$TEXT" '{text: $text}' | \
+            curl -sS -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-Type: application/json' \
+              -d @-
