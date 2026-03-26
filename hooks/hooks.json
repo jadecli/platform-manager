@@ -22,6 +22,17 @@
         ]
       }
     ],
+    "CwdChanged": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/alexzh/jadecli-ecosystem/scripts/session-init.sh"
+          }
+        ]
+      }
+    ],
     "TaskCreated": [
       {
         "matcher": "",

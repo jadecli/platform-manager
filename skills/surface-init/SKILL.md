@@ -1,5 +1,6 @@
 ---
 name: surface-init
+effort: low
 description: >
   Initializes Claude Code session context for jadecli-ecosystem surfaces.
   Use when starting work in any jadecli-ecosystem subdirectory, onboarding a new surface,
