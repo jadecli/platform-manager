@@ -1,0 +1,42 @@
+{
+  "$schema": "https://claude.ai/schemas/desktop-config.schema.json",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/alexzh/jadecli-ecosystem",
+        "/Users/alexzh/Documents"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "sqlite": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropics/server-sqlite",
+        "--db-path",
+        "/Users/alexzh/.local/share/claude-desktop/memory.db"
+      ]
+    }
+  },
+  "globalShortcut": "Command+Shift+Space",
+  "theme": "dark"
+}

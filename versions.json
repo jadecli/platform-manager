@@ -1,11 +1,24 @@
 {
   "pinned": "2026-03-26",
+  "install": {
+    "claude-cli": "native",
+    "note": "npm path deprecated — use curl -fsSL https://claude.ai/install.sh | bash -s <version>"
+  },
   "runtime": {
     "claude-cli": "2.1.84",
     "node": "22.21.1",
     "python": "3.14.3",
     "rustc": "1.93.1",
     "uv": "0.11.0"
+  },
+  "casks": {
+    "1password": "8.12.5",
+    "claude-devtools": "0.4.7",
+    "cursor": "2.4.37",
+    "docker-desktop": "4.64.0",
+    "ghostty": "1.2.3",
+    "iterm2": "3.6.9",
+    "visual-studio-code": "1.109.3"
   },
   "lsp": {
     "typescript-language-server": "5.1.3",

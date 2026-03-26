@@ -1,0 +1,9 @@
+- Return only high-signal output. Strip internal IDs, raw stack traces.
+- Tool descriptions = prompt engineering. Write as if explaining to a new hire.
+- Include concrete input_examples (1-5) for tools with ambiguous parameters.
+- Set `readOnlyHint: true` on tools that don't modify state.
+- Fewer high-level tools beat many low-level ones — consolidate operations.
+- Include selection heuristics: "use this when X, prefer Y when Z" — not just capability descriptions.
+- Pre-aggregate test output, CI logs, and large command output before returning to Claude — counts/summaries, not raw KB.
+- For tools returning variable-length results, add a `limit` parameter with conservative default.
+- `defer_loading: true` on infrequently-used tools — discovered via Tool Search on demand.
