@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Phase 07: Deploy ~/.claude/ config from repo source of truth.
-# Symlinks repo files into ~/.claude/ so edits go to git, not loose files.
+# Copies repo files into ~/.claude/ — one-time deploy, not symlinks.
+# To check for drift later: bash bootstrap/scripts/drift-check.sh
 set -euo pipefail
 
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
@@ -10,29 +11,24 @@ CONFIG_SRC="$REPO_ROOT/bootstrap/claude-config"
 
 mkdir -p "$CLAUDE_DIR"
 
-link_file() {
+copy_file() {
   local src="$1" dst="$2"
   $DRY_RUN || {
-    if [[ -L "$dst" ]]; then
-      /bin/rm "$dst"
-    elif [[ -e "$dst" ]]; then
-      /bin/mv "$dst" "${dst}.bak" 2>/dev/null || true
+    [[ -L "$dst" ]] && /bin/rm "$dst"
+    if [[ -f "$dst" ]] && ! diff -q "$src" "$dst" &>/dev/null; then
+      /bin/cp "$dst" "${dst}.bak"
     fi
-    ln -s "$src" "$dst"
+    /bin/cp "$src" "$dst"
   }
   echo "  $(basename "$dst")"
 }
 
-link_dir() {
+copy_dir() {
   local src="$1" dst="$2"
   $DRY_RUN || {
-    if [[ -L "$dst" ]]; then
-      /bin/rm "$dst"
-    elif [[ -d "$dst" ]]; then
-      /bin/rm -rf "${dst}.bak" 2>/dev/null || true
-      /bin/mv "$dst" "${dst}.bak" 2>/dev/null || true
-    fi
-    ln -s "$src" "$dst"
+    [[ -L "$dst" ]] && /bin/rm "$dst"
+    mkdir -p "$dst"
+    /bin/cp -R "$src/." "$dst/"
   }
   echo "  $(basename "$dst")/"
 }
@@ -41,12 +37,12 @@ echo "  Deploying config from $CONFIG_SRC → $CLAUDE_DIR"
 
 # Top-level files
 for f in CLAUDE.md settings.json settings.local.json keybindings.json statusline-command.sh shell-helpers.sh; do
-  [[ -f "$CONFIG_SRC/$f" ]] && link_file "$CONFIG_SRC/$f" "$CLAUDE_DIR/$f"
+  [[ -f "$CONFIG_SRC/$f" ]] && copy_file "$CONFIG_SRC/$f" "$CLAUDE_DIR/$f"
 done
 
-# Directories
+# Directories — merge into existing dir (preserves user-added files)
 for d in hooks commands rules agents output-styles skills; do
-  [[ -d "$CONFIG_SRC/$d" ]] && link_dir "$CONFIG_SRC/$d" "$CLAUDE_DIR/$d"
+  [[ -d "$CONFIG_SRC/$d" ]] && copy_dir "$CONFIG_SRC/$d" "$CLAUDE_DIR/$d"
 done
 
 # Claude Desktop config
@@ -54,8 +50,9 @@ DESKTOP_SRC="$CONFIG_SRC/claude-desktop/claude_desktop_config.json"
 DESKTOP_DIR="$HOME/.config/claude-desktop"
 if [[ -f "$DESKTOP_SRC" ]]; then
   mkdir -p "$DESKTOP_DIR"
-  link_file "$DESKTOP_SRC" "$DESKTOP_DIR/claude_desktop_config.json"
+  copy_file "$DESKTOP_SRC" "$DESKTOP_DIR/claude_desktop_config.json"
   echo "  claude-desktop config"
 fi
 
-echo "  Done: config symlinked to repo"
+echo "  Done: config deployed from repo"
+echo "  Drift check: bash bootstrap/scripts/drift-check.sh"
