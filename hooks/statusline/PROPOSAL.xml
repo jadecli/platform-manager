@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<proposal id="statusline-git-context" date="2026-03-25" surface="ghostty">
+  <!--
+    Statusline enhancement: absolute path, git status, PR number.
+    The statusline runs as a shell command on each assistant message.
+    Zero token overhead — purely local UI, no tool calls.
+    See: https://code.claude.com/docs/en/statusline
+  -->
+
+  <current-state>
+    <file>~/.claude/statusline-command.sh</file>
+    <shows>truncated-dir, branch, worktree, model, version, context-bar, cache, cost, rate-limits</shows>
+    <missing>absolute-path, pr-number, git-status</missing>
+  </current-state>
+
+  <changes>
+    <change id="1" risk="none">
+      <name>Absolute path (tilde-contracted)</name>
+      <before>last 2 path components (e.g., "jadecli/platform-manager")</before>
+      <after>~/jadecli-ecosystem/ghostty/repos/jadecli/platform-manager</after>
+      <source>cwd from stdin JSON — no subprocess</source>
+      <latency>0ms</latency>
+    </change>
+
+    <change id="2" risk="low">
+      <name>Git status indicator</name>
+      <display>✓ (clean) or ●N+M (N staged, M unstaged)</display>
+      <source>git status --porcelain | awk</source>
+      <cache file="/tmp/claude-statusline-git" ttl="5s"/>
+      <latency>0ms cache hit, ~10-50ms miss</latency>
+      <note>Cache keyed on cwd — invalidates on directory change</note>
+    </change>
+
+    <change id="3" risk="medium">
+      <name>PR number</name>
+      <display>#4 appended to branch name</display>
+      <source>gh pr view BRANCH --json number -q .number</source>
+      <cache file="/tmp/claude-statusline-pr" ttl="60s"/>
+      <latency>0ms cache hit, 500-2000ms miss (network)</latency>
+      <note>
+        Only on non-main branches. Cache keyed on branch name.
+        First statusline render after branch switch may be slow.
+        gh pr view failure (no PR exists) caches empty string — no retry until TTL.
+      </note>
+    </change>
+  </changes>
+
+  <rendering>
+    <!--
+      Event-driven: fires on assistant message, permission change, vim toggle.
+      Debounced at 300ms. Script cancelled if new event fires mid-run.
+      Slow PR lookup (~1s) only on cache miss — debounce protects against stacking.
+    -->
+    <triggers>assistant-message, permission-change, vim-toggle</triggers>
+    <debounce>300ms</debounce>
+    <cancellation>in-flight script killed on new trigger</cancellation>
+  </rendering>
+
+  <example-output>
+    <!-- Non-worktree, clean, with PR -->
+    alex@jadecli.com · Ghostty · Pro Max │ ~/jadecli-ecosystem/ghostty/repos/jadecli/platform-manager ·  feat/pm-37-bootstrap-onboarding#4 · ✓ · Opus 4.6 · v2.1.84 · ██░░░░░░░░ 15% 1M
+
+    <!-- Worktree, dirty, no PR -->
+    alex@jadecli.com · Ghostty · Pro Max │ [I] · WORKTREE: security-fix (from main) · ~/tmp/worktree-abc · fix/pm-99-patch · ●2+3 · Sonnet 4.6 · v2.1.84 · ████░░░░░░ 42%
+  </example-output>
+
+  <install>
+    cp hooks/statusline/statusline-command.sh ~/.claude/statusline-command.sh
+  </install>
+
+  <rollback>
+    git show main:hooks/statusline/statusline-command.sh is the previous version.
+    Or: git log --oneline ~/.claude/statusline-command.sh won't work (not tracked).
+    Keep a backup: cp ~/.claude/statusline-command.sh ~/.claude/statusline-command.sh.bak
+  </rollback>
+
+  <token-impact>ZERO — statusline is local UI, not injected into conversation context</token-impact>
+  <agent-loop-impact>ZERO — no tool calls, no stdin/stdout interception</agent-loop-impact>
+</proposal>
